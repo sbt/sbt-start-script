@@ -114,16 +114,14 @@ object StartScriptPlugin extends Plugin {
             newState
         }
 
-    case class ClasspathString(value: String)
+    case class RelativeClasspathString(value: String)
 
     ///// Settings keys
 
     val startScriptFile = SettingKey[File]("start-script-name")
-    // FIXME we need to relativize the classpath entries to deal with builddir!=deploydir,
-    // so these tasks should be named less generically, or just removed and replaced with
-    // a function that converts a classpath to a string, more likely
-    val dependencyClasspathString = TaskKey[ClasspathString]("dependency-classpath-string", "Dependency classpath as semicolon-separated string.")
-    val fullClasspathString = TaskKey[ClasspathString]("full-classpath-string", "Full classpath as semicolon-separated string.")
+    val relativeDependencyClasspathString = TaskKey[RelativeClasspathString]("relative-dependency-classpath-string", "Dependency classpath as colon-separated string with each entry relative to the build root directory.")
+    val relativeFullClasspathString = TaskKey[RelativeClasspathString]("relative-full-classpath-string", "Full classpath as colon-separated string with each entry relative to the build root directory.")
+    val startScriptBaseDirectory = SettingKey[File]("start-script-base-directory", "All start scripts must be run from this directory.")
     val startScriptForWar = TaskKey[File]("start-script-for-war", "Generate a shell script to launch the war file")
     val startScriptForJar = TaskKey[File]("start-script-for-jar", "Generate a shell script to launch the jar file")
     val startScriptForClasses = TaskKey[File]("start-script-for-classes", "Generate a shell script to launch from classes directory")
@@ -133,8 +131,56 @@ object StartScriptPlugin extends Plugin {
     // this is in WebPlugin, but we don't want to rely on WebPlugin to build
     private val packageWar = TaskKey[File]("package-war")
 
-    private def classpathStringTask(cp: Classpath) = {
-        ClasspathString(cp.files.mkString("", ":", ""))
+    private def directoryEqualsOrContains(d: File, f: File): Boolean = {
+        if (d == f) {
+            true
+        } else {
+            val p = f.getParentFile()
+            if (p == null)
+                false
+            else
+                directoryEqualsOrContains(d, p)
+        }
+    }
+
+    // Because we want to still work if the project directory is built and then moved,
+    // we change all file references pointing inside build's base directory to be relative
+    // to the build (not the project) before placing them in the start script.
+    // This is presumably unix-specific so we skip it if the separator char is not '/'
+    // We never add ".." to make something relative, since we are only making relative
+    // to basedir things that are already inside basedir. If basedir moves, we'd want
+    // references to outside of it to be absolute, to keep working. We don't support
+    // moving projects, just the entire build, which is generally a single git repo.
+    private def relativizeFile(baseDirectory: File, f: File) = {
+        if (java.io.File.separatorChar != '/') {
+            f
+        } else {
+            val baseCanonical = baseDirectory.getCanonicalFile()
+            val fCanonical = f.getCanonicalFile()
+            if (directoryEqualsOrContains(baseCanonical, fCanonical)) {
+                val basePath = baseCanonical.getAbsolutePath()
+                val fPath = fCanonical.getAbsolutePath()
+                if (fPath.startsWith(basePath)) {
+                    new File("." + fPath.substring(basePath.length))
+                } else {
+                    error("Internal bug: %s contains %s but is not a prefix of it".format(basePath, fPath))
+                }
+            } else {
+                // leave it as-is, don't even canonicalize
+                f
+            }
+        }
+    }
+
+    private def relativeClasspathStringTask(baseDirectory: File, cp: Classpath) = {
+        RelativeClasspathString(cp.files map { f => relativizeFile(baseDirectory, f) } mkString("", ":", ""))
+    }
+
+    // generate shell script that checks we're in the right directory
+    // by checking that the script itself exists.
+    private def scriptRootCheck(baseDirectory: File, scriptFile: File): String = {
+        val relativeScript = relativizeFile(baseDirectory, scriptFile)
+        """test -x '%s' || (echo "'%s' not found, this script must be run from the project base directory" 1>&2 && exit 1)""".format(relativeScript, relativeScript)
     }
 
     private def writeScript(scriptFile: File, script: String) = {
@@ -142,14 +188,15 @@ object StartScriptPlugin extends Plugin {
         scriptFile.setExecutable(true)
     }
 
-    def startScriptForClassesTask(streams: TaskStreams, scriptFile: File, cpString: ClasspathString, maybeMainClass: Option[String]) = {
+    def startScriptForClassesTask(streams: TaskStreams, baseDirectory: File, scriptFile: File, cpString: RelativeClasspathString, maybeMainClass: Option[String]) = {
         maybeMainClass match {
             case Some(mainClass) =>
                 val template = """#!/bin/bash
+@SCRIPT_ROOT_CHECK@
 java $JAVA_OPTS -cp "@CLASSPATH@" @MAINCLASS@ "$@"
 exit 1
 """
-                val script = template.replace("@CLASSPATH@", cpString.value).replace("@MAINCLASS@", mainClass)
+                val script = template.replace("@SCRIPT_ROOT_CHECK@", scriptRootCheck(baseDirectory, scriptFile)).replace("@CLASSPATH@", cpString.value).replace("@MAINCLASS@", mainClass)
                 writeScript(scriptFile, script)
                 streams.log.info("Wrote start script for class " + mainClass + " to " + scriptFile)
                 scriptFile
@@ -158,12 +205,13 @@ exit 1
         }
     }
 
-    def startScriptForJarTask(streams: TaskStreams, scriptFile: File, jarFile: File, cpString: ClasspathString) = {
-        val template = """#!/bin/bash
-        java $JAVA_OPTS -cp "@CLASSPATH@" -jar @JARFILE@ "$@"
+    def startScriptForJarTask(streams: TaskStreams, baseDirectory: File, scriptFile: File, jarFile: File, cpString: RelativeClasspathString) = {
+        val template = """#!/bin/bas
+@SCRIPT_ROOT_CHECK@
+java $JAVA_OPTS -cp "@CLASSPATH@" -jar @JARFILE@ "$@"
 exit 1
 """
-        val script = template.replace("@CLASSPATH@", cpString.value).replace("@JARFILE@", jarFile.toString)
+        val script = template.replace("@SCRIPT_ROOT_CHECK@", scriptRootCheck(baseDirectory, scriptFile)).replace("@CLASSPATH@", cpString.value).replace("@JARFILE@", jarFile.toString)
         writeScript(scriptFile, script)
         streams.log.info("Wrote start script for jar " + jarFile + " to " + scriptFile)
         scriptFile
@@ -173,7 +221,7 @@ exit 1
     // we need to download and unpack the Jetty "distribution" which isn't
     // a normal jar dependency. Not sure if Ivy can do that, may have to just
     // have a configurable URL and checksum.
-    def startScriptForWarTask(streams: TaskStreams, scriptFile: File, warFile: File) = {
+    def startScriptForWarTask(streams: TaskStreams, baseDirectory: File, scriptFile: File, warFile: File) = {
         writeScript(scriptFile, """#!/bin/bash
 echo "Launching web projects is not yet implemented" 1>&2
 exit 1
@@ -199,23 +247,25 @@ exit 1
     // these settings to any project.
     val genericStartScriptSettings: Seq[Project.Setting[_]] = Seq(
         startScriptFile <<= (target) { (target) => target / "start" },
+        // maybe not the right way to do this...
+        startScriptBaseDirectory <<= (thisProjectRef) { (ref) => new File(ref.build) },
         startScriptNotDefined in Compile <<= (streams, startScriptFile in Compile) map startScriptNotDefinedTask,
-        dependencyClasspathString in Compile <<= (dependencyClasspath in Runtime) map classpathStringTask,
-        fullClasspathString in Compile <<= (fullClasspath in Runtime) map classpathStringTask
+        relativeDependencyClasspathString in Compile <<= (startScriptBaseDirectory, dependencyClasspath in Runtime) map relativeClasspathStringTask,
+        relativeFullClasspathString in Compile <<= (startScriptBaseDirectory, fullClasspath in Runtime) map relativeClasspathStringTask
     )
 
     // settings to be added to a web plugin project
     val startScriptWarSettings: Seq[Project.Setting[_]] = Seq(
-        startScriptForWar in Compile <<= (streams, startScriptFile in Compile, packageWar in Compile) map startScriptForWarTask
+        startScriptForWar in Compile <<= (streams, startScriptBaseDirectory, startScriptFile in Compile, packageWar in Compile) map startScriptForWarTask
     ) ++ genericStartScriptSettings
 
     // settings to be added to a project with an exported jar
     val startScriptJarSettings: Seq[Project.Setting[_]] = Seq(
-        startScriptForJar in Compile <<= (streams, startScriptFile in Compile, packageBin in Compile, dependencyClasspathString in Compile) map startScriptForJarTask
+        startScriptForJar in Compile <<= (streams, startScriptBaseDirectory, startScriptFile in Compile, packageBin in Compile, relativeDependencyClasspathString in Compile) map startScriptForJarTask
     ) ++ genericStartScriptSettings
 
     // settings to be added to a project that doesn't export a jar
     val startScriptClassesSettings: Seq[Project.Setting[_]] = Seq(
-        startScriptForClasses in Compile <<= (streams, startScriptFile in Compile, dependencyClasspathString in Compile, mainClass in Compile) map startScriptForClassesTask
+        startScriptForClasses in Compile <<= (streams, startScriptBaseDirectory, startScriptFile in Compile, relativeFullClasspathString in Compile, mainClass in Compile) map startScriptForClassesTask
     ) ++ genericStartScriptSettings
 }
