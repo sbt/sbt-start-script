@@ -1,4 +1,4 @@
-package com.typesafe.startScript
+package com.typesafe.startscript
 
 import _root_.sbt._
 
