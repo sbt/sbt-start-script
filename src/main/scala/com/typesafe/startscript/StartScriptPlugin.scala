@@ -436,11 +436,11 @@ exit 1
 
     // settings to be added to a project with an exported jar
     val startScriptJarSettings: Seq[Project.Setting[_]] = Seq(
-        startScriptForJar in Compile <<= (streams, startScriptBaseDirectory, startScriptFile in Compile, packageBin in Compile, relativeDependencyClasspathString in Compile, mainClass in Compile) map startScriptForJarTask
+        startScriptForJar in Compile <<= (streams, startScriptBaseDirectory, startScriptFile in Compile, packageBin in Compile, relativeDependencyClasspathString in Compile, mainClass) map startScriptForJarTask
     ) ++ genericStartScriptSettings
 
     // settings to be added to a project that doesn't export a jar
     val startScriptClassesSettings: Seq[Project.Setting[_]] = Seq(
-        startScriptForClasses in Compile <<= (streams, startScriptBaseDirectory, startScriptFile in Compile, relativeFullClasspathString in Compile, mainClass in Compile) map startScriptForClassesTask
+        startScriptForClasses in Compile <<= (streams, startScriptBaseDirectory, startScriptFile in Compile, relativeFullClasspathString in Compile, mainClass) map startScriptForClassesTask
     ) ++ genericStartScriptSettings
 }
