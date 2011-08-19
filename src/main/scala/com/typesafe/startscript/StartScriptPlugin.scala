@@ -240,7 +240,6 @@ fi
     }
 
     def startScriptForClassesTask(streams: TaskStreams, baseDirectory: File, scriptFile: File, cpString: RelativeClasspathString, maybeMainClass: Option[String]) = {
-        try {
         val template = """#!/bin/bash
 @SCRIPT_ROOT_CHECK@
 
@@ -257,9 +256,6 @@ exit 0
         writeScript(scriptFile, script)
         streams.log.info("Wrote start script for mainClass := " + maybeMainClass + " to " + scriptFile)
         scriptFile
-        } catch {
-            case e: Throwable => streams.log.error("Fail: " + e.getStackTraceString); throw e
-        }
     }
 
     // the classpath string here is dependencyClasspath which includes the exported
