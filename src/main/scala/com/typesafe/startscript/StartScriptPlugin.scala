@@ -225,20 +225,31 @@ exit 0
         }
     }
 
-    def startScriptForJarTask(streams: TaskStreams, baseDirectory: File, scriptFile: File, jarFile: File, cpString: RelativeClasspathString) = {
-        val template = """#!/bin/bash
+    // the classpath string here is dependencyClasspath which includes the exported
+    // jar, that is not what I was expecting... anyway it works out since we want
+    // the jar on the classpath.
+    // We put jar on the classpath and supply a mainClass because with "java -jar"
+    // the deps have to be bundled in the jar (classpath is ignored), and SBT does
+    // not normally do that.
+    def startScriptForJarTask(streams: TaskStreams, baseDirectory: File, scriptFile: File, jarFile: File, cpString: RelativeClasspathString, maybeMainClass: Option[String]) = {
+        maybeMainClass match {
+            case Some(mainClass) =>
+                val template = """#!/bin/bash
 @SCRIPT_ROOT_CHECK@
-java $JAVA_OPTS -cp "@CLASSPATH@" -jar @JARFILE@ "$@"
+java $JAVA_OPTS -cp "@CLASSPATH@" @MAINCLASS@ "$@"
 exit 0
 
 """
 
-        val relativeJarFile = relativizeFile(baseDirectory, jarFile)
+                val relativeJarFile = relativizeFile(baseDirectory, jarFile)
 
-        val script = template.replace("@SCRIPT_ROOT_CHECK@", scriptRootCheck(baseDirectory, scriptFile, Some(relativeJarFile))).replace("@CLASSPATH@", cpString.value).replace("@JARFILE@", relativeJarFile.toString)
-        writeScript(scriptFile, script)
-        streams.log.info("Wrote start script for jar " + relativeJarFile + " to " + scriptFile)
-        scriptFile
+                val script = template.replace("@SCRIPT_ROOT_CHECK@", scriptRootCheck(baseDirectory, scriptFile, Some(relativeJarFile))).replace("@CLASSPATH@", cpString.value).replace("@MAINCLASS@", mainClass)
+                writeScript(scriptFile, script)
+                streams.log.info("Wrote start script for jar " + relativeJarFile + " to " + scriptFile)
+                scriptFile
+            case None =>
+                startScriptNotDefinedTask(streams, scriptFile)
+        }
     }
 
     // FIXME implement this; it will be a little bit tricky because
@@ -381,7 +392,7 @@ exit 1
 
     // settings to be added to a project with an exported jar
     val startScriptJarSettings: Seq[Project.Setting[_]] = Seq(
-        startScriptForJar in Compile <<= (streams, startScriptBaseDirectory, startScriptFile in Compile, packageBin in Compile, relativeDependencyClasspathString in Compile) map startScriptForJarTask
+        startScriptForJar in Compile <<= (streams, startScriptBaseDirectory, startScriptFile in Compile, packageBin in Compile, relativeDependencyClasspathString in Compile, mainClass in Compile) map startScriptForJarTask
     ) ++ genericStartScriptSettings
 
     // settings to be added to a project that doesn't export a jar
