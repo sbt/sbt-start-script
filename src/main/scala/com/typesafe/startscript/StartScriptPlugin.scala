@@ -285,7 +285,7 @@ exit 0
                                                   "CLASSPATH" -> cpString.value,
                                                   "MAIN_CLASS_SETUP" -> mainClassSetup(maybeMainClass)))
         writeScript(scriptFile, script)
-        streams.log.info("Wrote start script for jar " + relativeJarFile + " to " + scriptFile)
+        streams.log.info("Wrote start script for jar " + relativeJarFile + " to " + scriptFile + " with mainClass := " + maybeMainClass)
         scriptFile
     }
 
