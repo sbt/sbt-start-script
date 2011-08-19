@@ -227,7 +227,7 @@ test -x '@RELATIVE_SCRIPT@' || die "'@RELATIVE_SCRIPT@' not found, this script m
                 """MAINCLASS="$1"
 shift
 if test x"$MAINCLASS" = x; then
-    die 'Must specify a main class name as the first argument to the "start" script, or in SBT as mainClass := Some("Whatever")'
+    die 'This "start" script requires a main class name as the first argument, because a mainClass was not specified in SBT and not autodetected by SBT (usually means you have zero, or more than one, main classes).  You could specify in your SBT build: mainClass in Compile := Some("Whatever")'
 fi
 
 """
