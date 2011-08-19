@@ -274,7 +274,7 @@ exit 0
 
 @MAIN_CLASS_SETUP@
 
-java $JAVA_OPTS -cp "@CLASSPATH@" @MAINCLASS@ "$@"
+java $JAVA_OPTS -cp "@CLASSPATH@" "$MAINCLASS" "$@"
 exit 0
 
 """
