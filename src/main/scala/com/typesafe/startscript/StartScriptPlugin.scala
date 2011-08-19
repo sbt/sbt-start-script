@@ -185,7 +185,7 @@ object StartScriptPlugin extends Plugin {
 
     // generate shell script that checks we're in the right directory
     // by checking that the script itself exists.
-    private def scriptRootCheck(baseDirectory: File, scriptFile: File): String = {
+    private def scriptRootCheck(baseDirectory: File, scriptFile: File, otherFile: Option[File]): String = {
         val relativeScript = relativizeFile(baseDirectory, scriptFile)
         val template = """
 function die() {
@@ -194,7 +194,10 @@ function die() {
 }
 test -x '@RELATIVE_SCRIPT@' || die "'@RELATIVE_SCRIPT@' not found, this script must be run from the project base directory"
 """
-        template.replace("@RELATIVE_SCRIPT@", relativeScript.toString)
+        val part = template.replace("@RELATIVE_SCRIPT@", relativeScript.toString)
+        otherFile.foldLeft(part)({ (firstPart, file) =>
+            firstPart + """test -e '@OTHER_FILE@' || die "'@OTHER_FILE@' not found, this script must be run from the project base directory"""".replace("@OTHER_FILE@", file.toString)
+        })
     }
 
     private def writeScript(scriptFile: File, script: String) = {
@@ -213,7 +216,7 @@ java $JAVA_OPTS -cp "@CLASSPATH@" @MAINCLASS@ "$@"
 exit 0
 
 """
-                val script = template.replace("@SCRIPT_ROOT_CHECK@", scriptRootCheck(baseDirectory, scriptFile)).replace("@CLASSPATH@", cpString.value).replace("@MAINCLASS@", mainClass)
+                val script = template.replace("@SCRIPT_ROOT_CHECK@", scriptRootCheck(baseDirectory, scriptFile, None)).replace("@CLASSPATH@", cpString.value).replace("@MAINCLASS@", mainClass)
                 writeScript(scriptFile, script)
                 streams.log.info("Wrote start script for class " + mainClass + " to " + scriptFile)
                 scriptFile
@@ -229,9 +232,12 @@ java $JAVA_OPTS -cp "@CLASSPATH@" -jar @JARFILE@ "$@"
 exit 0
 
 """
-        val script = template.replace("@SCRIPT_ROOT_CHECK@", scriptRootCheck(baseDirectory, scriptFile)).replace("@CLASSPATH@", cpString.value).replace("@JARFILE@", jarFile.toString)
+
+        val relativeJarFile = relativizeFile(baseDirectory, jarFile)
+
+        val script = template.replace("@SCRIPT_ROOT_CHECK@", scriptRootCheck(baseDirectory, scriptFile, Some(relativeJarFile))).replace("@CLASSPATH@", cpString.value).replace("@JARFILE@", relativeJarFile.toString)
         writeScript(scriptFile, script)
-        streams.log.info("Wrote start script for jar " + jarFile + " to " + scriptFile)
+        streams.log.info("Wrote start script for jar " + relativeJarFile + " to " + scriptFile)
         scriptFile
     }
 
@@ -266,10 +272,12 @@ java $JAVA_OPTS -Djetty.port="$PORT" -Djetty.home="@JETTY_HOME@" -jar "@JETTY_HO
 exit 0
 
 """
-        val script = template.replace("@SCRIPT_ROOT_CHECK@", scriptRootCheck(baseDirectory, scriptFile)).replace("@WARFILE@", warFile.toString).replace("@JETTY_HOME@", jettyHome.toString)
+        val relativeWarFile = relativizeFile(baseDirectory, warFile)
+
+        val script = template.replace("@SCRIPT_ROOT_CHECK@", scriptRootCheck(baseDirectory, scriptFile, Some(relativeWarFile))).replace("@WARFILE@", relativeWarFile.toString).replace("@JETTY_HOME@", jettyHome.toString)
         writeScript(scriptFile, script)
 
-        streams.log.info("Wrote start script for war " + warFile + " to " + scriptFile)
+        streams.log.info("Wrote start script for war " + relativeWarFile + " to " + scriptFile)
         scriptFile
     }
 
