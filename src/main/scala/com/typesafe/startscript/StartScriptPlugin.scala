@@ -219,30 +219,46 @@ test -x '@RELATIVE_SCRIPT@' || die "'@RELATIVE_SCRIPT@' not found, this script m
         })
     }
 
+    private def mainClassSetup(maybeMainClass: Option[String]): String = {
+        maybeMainClass match {
+            case Some(mainClass) =>
+                "MAINCLASS=" + mainClass + "\n"
+            case None =>
+                """MAINCLASS="$1"
+shift
+if test x"$MAINCLASS" = x; then
+    die 'Must specify a main class name as the first argument to the "start" script, or in SBT as mainClass := Some("Whatever")'
+fi
+
+"""
+        }
+    }
+
     private def writeScript(scriptFile: File, script: String) = {
         IO.write(scriptFile, script)
         scriptFile.setExecutable(true)
     }
 
     def startScriptForClassesTask(streams: TaskStreams, baseDirectory: File, scriptFile: File, cpString: RelativeClasspathString, maybeMainClass: Option[String]) = {
-        maybeMainClass match {
-            case Some(mainClass) =>
-                val template = """#!/bin/bash
+        try {
+        val template = """#!/bin/bash
 @SCRIPT_ROOT_CHECK@
 
-java $JAVA_OPTS -cp "@CLASSPATH@" @MAINCLASS@ "$@"
+@MAIN_CLASS_SETUP@
+
+java $JAVA_OPTS -cp "@CLASSPATH@" "$MAINCLASS" "$@"
 
 exit 0
 
 """
-                val script = renderTemplate(template, Map("SCRIPT_ROOT_CHECK" -> scriptRootCheck(baseDirectory, scriptFile, None),
-                                                          "CLASSPATH" -> cpString.value,
-                                                          "MAINCLASS" -> mainClass))
-                writeScript(scriptFile, script)
-                streams.log.info("Wrote start script for class " + mainClass + " to " + scriptFile)
-                scriptFile
-            case None =>
-                startScriptNotDefinedTask(streams, scriptFile)
+        val script = renderTemplate(template, Map("SCRIPT_ROOT_CHECK" -> scriptRootCheck(baseDirectory, scriptFile, None),
+                                                  "CLASSPATH" -> cpString.value,
+                                                  "MAIN_CLASS_SETUP" -> mainClassSetup(maybeMainClass)))
+        writeScript(scriptFile, script)
+        streams.log.info("Wrote start script for mainClass := " + maybeMainClass + " to " + scriptFile)
+        scriptFile
+        } catch {
+            case e: Throwable => streams.log.error("Fail: " + e.getStackTraceString); throw e
         }
     }
 
@@ -253,26 +269,24 @@ exit 0
     // the deps have to be bundled in the jar (classpath is ignored), and SBT does
     // not normally do that.
     def startScriptForJarTask(streams: TaskStreams, baseDirectory: File, scriptFile: File, jarFile: File, cpString: RelativeClasspathString, maybeMainClass: Option[String]) = {
-        maybeMainClass match {
-            case Some(mainClass) =>
-                val template = """#!/bin/bash
+        val template = """#!/bin/bash
 @SCRIPT_ROOT_CHECK@
+
+@MAIN_CLASS_SETUP@
+
 java $JAVA_OPTS -cp "@CLASSPATH@" @MAINCLASS@ "$@"
 exit 0
 
 """
 
-                val relativeJarFile = relativizeFile(baseDirectory, jarFile)
+        val relativeJarFile = relativizeFile(baseDirectory, jarFile)
 
-                val script = renderTemplate(template, Map("SCRIPT_ROOT_CHECK" -> scriptRootCheck(baseDirectory, scriptFile, Some(relativeJarFile)),
-                                                          "CLASSPATH" -> cpString.value,
-                                                          "MAINCLASS" -> mainClass))
-                writeScript(scriptFile, script)
-                streams.log.info("Wrote start script for jar " + relativeJarFile + " to " + scriptFile)
-                scriptFile
-            case None =>
-                startScriptNotDefinedTask(streams, scriptFile)
-        }
+        val script = renderTemplate(template, Map("SCRIPT_ROOT_CHECK" -> scriptRootCheck(baseDirectory, scriptFile, Some(relativeJarFile)),
+                                                  "CLASSPATH" -> cpString.value,
+                                                  "MAIN_CLASS_SETUP" -> mainClassSetup(maybeMainClass)))
+        writeScript(scriptFile, script)
+        streams.log.info("Wrote start script for jar " + relativeJarFile + " to " + scriptFile)
+        scriptFile
     }
 
     // FIXME implement this; it will be a little bit tricky because
