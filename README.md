@@ -39,6 +39,6 @@ https://github.com/siasia/xsbt-web-plugin/ to provide the
 `package-war` task.
 
 After you add these settings, you also need to alias `start-script` to
-the implementation task you selected, for example: `startScript in Compile <<= (startScriptForWar in Compile).identity`
+the implementation task you selected, for example: `startScript in Compile <<= (startScriptForWar in Compile).identity`  (FIXME this should be automatic)
 
 When you run it, the task `start-script` creates a file `target/start` which starts your app.
