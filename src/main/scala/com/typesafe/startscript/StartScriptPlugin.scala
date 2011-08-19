@@ -180,10 +180,11 @@ object StartScriptPlugin extends Plugin {
     }
 
     private def renderTemplate(template: String, fields: Map[String,String]) = {
-        val substRegex = """@([A-Z_]+)@""".r
+        val substRegex = """@[A-Z_]+@""".r
         for (m <- substRegex findAllIn template) {
-            if (!fields.contains(m))
-                error("Template has variable %s which is not in the substitution map %s".format(m, fields))
+            val withoutAts = m.substring(1, m.length - 1)
+            if (!fields.contains(withoutAts))
+                error("Template has variable %s which is not in the substitution map %s".format(withoutAts, fields))
         }
         // this is neither fast nor very correct (since if a value contains an @@ we'd substitute
         // on a substitution) but it's fine for private ad hoc use where we know it doesn't
