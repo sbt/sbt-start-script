@@ -179,6 +179,23 @@ object StartScriptPlugin extends Plugin {
         }
     }
 
+    private def renderTemplate(template: String, fields: Map[String,String]) = {
+        val substRegex = """@([A-Z_]+)@""".r
+        for (m <- substRegex findAllIn template) {
+            if (!fields.contains(m))
+                error("Template has variable %s which is not in the substitution map %s".format(m, fields))
+        }
+        // this is neither fast nor very correct (since if a value contains an @@ we'd substitute
+        // on a substitution) but it's fine for private ad hoc use where we know it doesn't
+        // matter
+        fields.iterator.foldLeft(template)({ (s, kv) =>
+            val withAts = "@" + kv._1 + "@"
+            if (!s.contains(withAts))
+                error("Template does not contain variable " + withAts)
+            s.replace(withAts, kv._2)
+        })
+    }
+
     private def relativeClasspathStringTask(baseDirectory: File, cp: Classpath) = {
         RelativeClasspathString(cp.files map { f => relativizeFile(baseDirectory, f) } mkString("", ":", ""))
     }
@@ -194,9 +211,10 @@ function die() {
 }
 test -x '@RELATIVE_SCRIPT@' || die "'@RELATIVE_SCRIPT@' not found, this script must be run from the project base directory"
 """
-        val part = template.replace("@RELATIVE_SCRIPT@", relativeScript.toString)
+        val part = renderTemplate(template, Map("RELATIVE_SCRIPT" -> relativeScript.toString))
         otherFile.foldLeft(part)({ (firstPart, file) =>
-            firstPart + """test -e '@OTHER_FILE@' || die "'@OTHER_FILE@' not found, this script must be run from the project base directory"""".replace("@OTHER_FILE@", file.toString)
+            firstPart + renderTemplate("""test -e '@OTHER_FILE@' || die "'@OTHER_FILE@' not found, this script must be run from the project base directory"""",
+                                       Map("OTHER_FILE" -> file.toString))
         })
     }
 
@@ -216,7 +234,9 @@ java $JAVA_OPTS -cp "@CLASSPATH@" @MAINCLASS@ "$@"
 exit 0
 
 """
-                val script = template.replace("@SCRIPT_ROOT_CHECK@", scriptRootCheck(baseDirectory, scriptFile, None)).replace("@CLASSPATH@", cpString.value).replace("@MAINCLASS@", mainClass)
+                val script = renderTemplate(template, Map("SCRIPT_ROOT_CHECK" -> scriptRootCheck(baseDirectory, scriptFile, None),
+                                                          "CLASSPATH" -> cpString.value,
+                                                          "MAINCLASS" -> mainClass))
                 writeScript(scriptFile, script)
                 streams.log.info("Wrote start script for class " + mainClass + " to " + scriptFile)
                 scriptFile
@@ -243,7 +263,9 @@ exit 0
 
                 val relativeJarFile = relativizeFile(baseDirectory, jarFile)
 
-                val script = template.replace("@SCRIPT_ROOT_CHECK@", scriptRootCheck(baseDirectory, scriptFile, Some(relativeJarFile))).replace("@CLASSPATH@", cpString.value).replace("@MAINCLASS@", mainClass)
+                val script = renderTemplate(template, Map("SCRIPT_ROOT_CHECK" -> scriptRootCheck(baseDirectory, scriptFile, Some(relativeJarFile)),
+                                                          "CLASSPATH" -> cpString.value,
+                                                          "MAINCLASS" -> mainClass))
                 writeScript(scriptFile, script)
                 streams.log.info("Wrote start script for jar " + relativeJarFile + " to " + scriptFile)
                 scriptFile
@@ -260,13 +282,17 @@ exit 0
 
         // First we need a Jetty config to move us to the right context path
         val contextFile = jettyHome / "contexts" / "start-script.xml"
+
+        // (I guess this could use Scala's XML support, feel free to clean up)
         val contextFileTemplate = """
 <Configure class="org.eclipse.jetty.webapp.WebAppContext">
   <Set name="contextPath">@CONTEXTPATH@</Set>
   <Set name="war"><SystemProperty name="jetty.home" default="."/>/webapps/@WARFILE_BASENAME@</Set>
 </Configure>
 """
-        val contextFileContents = contextFileTemplate.replace("@WARFILE_BASENAME@", warFile.getName).replace("@CONTEXTPATH@", jettyContextPath)
+        val contextFileContents = renderTemplate(contextFileTemplate,
+                                                 Map("WARFILE_BASENAME" -> warFile.getName,
+                                                     "CONTEXTPATH" -> jettyContextPath))
         IO.write(contextFile, contextFileContents)
 
         val template = """#!/bin/bash
@@ -285,7 +311,10 @@ exit 0
 """
         val relativeWarFile = relativizeFile(baseDirectory, warFile)
 
-        val script = template.replace("@SCRIPT_ROOT_CHECK@", scriptRootCheck(baseDirectory, scriptFile, Some(relativeWarFile))).replace("@WARFILE@", relativeWarFile.toString).replace("@JETTY_HOME@", jettyHome.toString)
+        val script = renderTemplate(template,
+                                    Map("SCRIPT_ROOT_CHECK" -> scriptRootCheck(baseDirectory, scriptFile, Some(relativeWarFile)),
+                                        "WARFILE" -> relativeWarFile.toString,
+                                        "JETTY_HOME" -> jettyHome.toString))
         writeScript(scriptFile, script)
 
         streams.log.info("Wrote start script for war " + relativeWarFile + " to " + scriptFile)
