@@ -3,7 +3,7 @@ which will run that project with the proper classpath.
 
 For now, the best way to use this plugin is to add it globally by
 dropping `StartScriptPlugin.scala` into `~/.sbt/plugins` then
-use `ensure-start-script-tasks` followed by `start-script`
+use `add-start-script-tasks` followed by `start-script`
 
 It will be easier to use "normally" once it's published somewhere.
 
@@ -16,10 +16,10 @@ StartScriptPlugin.scala in `~/.sbt/plugins/` (FIXME once we publish the
 directions here change).
 
 If you install the plugin globally, it will add a command
-`ensure-start-script-tasks` to every project using SBT. You can run
+`add-start-script-tasks` to every project using SBT. You can run
 this command to add the tasks from the plugin, such as `start-script`
 (the `start-script` task won't exist until you
-`ensure-start-script-tasks`, to avoid interfering with projects that
+`add-start-script-tasks`, to avoid interfering with projects that
 use the plugin directly and override `start-script`).
 
 The second way to use it is to incorporate it into your project, and

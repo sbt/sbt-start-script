@@ -8,7 +8,7 @@ import Defaults._
 import Scope.GlobalScope
 
 object StartScriptPlugin extends Plugin {
-    override lazy val settings = Seq(commands += ensureStartScriptTasksCommand)
+    override lazy val settings = Seq(commands += addStartScriptTasksCommand)
 
     // Extracted.getOpt is not in 10.1 and earlier
     private def inCurrent[T](extracted: Extracted, key: ScopedKey[T]): Scope = {
@@ -101,8 +101,8 @@ object StartScriptPlugin extends Plugin {
     // command to add the startScript tasks, avoiding overriding anything the
     // app already has, and intelligently selecting the right target for
     // the "start-script" alias
-    lazy val ensureStartScriptTasksCommand =
-        Command.command("ensure-start-script-tasks") { (state: State) =>
+    lazy val addStartScriptTasksCommand =
+        Command.command("add-start-script-tasks") { (state: State) =>
             val allRefs = Project.extract(state).structure.allProjectRefs
             val allAppendSettings = allRefs.foldLeft(Seq[Setting[_]]())({ (soFar, ref) =>
                 soFar ++ getStartScriptTaskSettings(state, ref)
@@ -408,7 +408,7 @@ exit 1
     }
 
     // apps can manually add these settings (in the way you'd use WebPlugin.webSettings),
-    // or you can install the plugin globally and use ensure-start-script-tasks to add
+    // or you can install the plugin globally and use add-start-script-tasks to add
     // these settings to any project.
     val genericStartScriptSettings: Seq[Project.Setting[_]] = Seq(
         startScriptFile <<= (target) { (target) => target / "start" },
