@@ -37,28 +37,22 @@ object StartScriptPlugin extends Plugin {
         }
     }
 
-    private case class StartScriptSetting(alias: Setting[_], other: Seq[Setting[_]])
-
-    private def resolveStartScriptSetting(extracted: Extracted, log: Logger): StartScriptSetting = {
+    private def resolveStartScriptSetting(extracted: Extracted, log: Logger): Seq[Setting[_]] = {
         val maybePackageWar = getOpt(extracted, (packageWar in Compile).scoped)
         val maybeExportJars = getOpt(extracted, (exportJars in Compile).scoped)
 
         if (maybePackageWar.isDefined) {
             log.info("Aliasing start-script to start-script-for-war in " + extractedLabel(extracted))
-            StartScriptSetting(startScript in Compile <<= (startScriptForWar in Compile).identity,
-                            startScriptWarSettings)
+            startScriptWarSettings
         } else if (maybeExportJars.isDefined && maybeExportJars.get) {
             log.info("Aliasing start-script to start-script-for-jar in " + extractedLabel(extracted))
-            StartScriptSetting(startScript in Compile <<= (startScriptForJar in Compile).identity,
-                            startScriptJarSettings)
+            startScriptJarSettings
         } else if (true /* can't figure out how to decide this ("is there a main class?") without compiling first */) {
             log.info("Aliasing start-script to start-script-for-classes in " + extractedLabel(extracted))
-            StartScriptSetting(startScript in Compile <<= (startScriptForClasses in Compile).identity,
-                            startScriptClassesSettings)
+            startScriptClassesSettings
         } else {
             log.info("Aliasing start-script to start-script-not-defined in " + extractedLabel(extracted))
-            StartScriptSetting(startScript in Compile <<= (startScriptNotDefined in Compile).identity,
-                            genericStartScriptSettings)
+            genericStartScriptSettings ++ Seq(startScript in Compile <<= (startScriptNotDefined in Compile).identity)
         }
     }
 
@@ -89,11 +83,9 @@ object StartScriptPlugin extends Plugin {
         val resolved = resolveStartScriptSetting(extracted, log)
 
         var settingsToAdd = Seq[Setting[_]]()
-        for (s <- resolved.other) {
+        for (s <- resolved) {
             settingsToAdd = collectIfMissing(extracted, settingsToAdd, s)
         }
-
-        settingsToAdd = settingsToAdd :+ resolved.alias
 
         makeAppendSettings(settingsToAdd, ref, extracted)
     }
@@ -427,16 +419,19 @@ exit 1
         startScriptJettyURL in Compile <<= (startScriptJettyVersion in Compile) { (version) =>  "http://download.eclipse.org/jetty/" + version + "/dist/jetty-distribution-" + version + ".zip" },
         startScriptJettyContextPath in Compile :== "/",
         startScriptJettyHome in Compile <<= (streams, target, startScriptJettyURL in Compile, startScriptJettyChecksum in Compile) map startScriptJettyHomeTask,
-        startScriptForWar in Compile <<= (streams, startScriptBaseDirectory, startScriptFile in Compile, packageWar in Compile, startScriptJettyHome in Compile, startScriptJettyContextPath in Compile) map startScriptForWarTask
+        startScriptForWar in Compile <<= (streams, startScriptBaseDirectory, startScriptFile in Compile, packageWar in Compile, startScriptJettyHome in Compile, startScriptJettyContextPath in Compile) map startScriptForWarTask,
+        startScript in Compile <<= (startScriptForWar in Compile).identity
     ) ++ genericStartScriptSettings
 
     // settings to be added to a project with an exported jar
     val startScriptJarSettings: Seq[Project.Setting[_]] = Seq(
-        startScriptForJar in Compile <<= (streams, startScriptBaseDirectory, startScriptFile in Compile, packageBin in Compile, relativeDependencyClasspathString in Compile, mainClass in Compile) map startScriptForJarTask
+        startScriptForJar in Compile <<= (streams, startScriptBaseDirectory, startScriptFile in Compile, packageBin in Compile, relativeDependencyClasspathString in Compile, mainClass in Compile) map startScriptForJarTask,
+        startScript in Compile <<= (startScriptForJar in Compile).identity
     ) ++ genericStartScriptSettings
 
     // settings to be added to a project that doesn't export a jar
     val startScriptClassesSettings: Seq[Project.Setting[_]] = Seq(
-        startScriptForClasses in Compile <<= (streams, startScriptBaseDirectory, startScriptFile in Compile, relativeFullClasspathString in Compile, mainClass in Compile) map startScriptForClassesTask
+        startScriptForClasses in Compile <<= (streams, startScriptBaseDirectory, startScriptFile in Compile, relativeFullClasspathString in Compile, mainClass in Compile) map startScriptForClassesTask,
+        startScript in Compile <<= (startScriptForClasses in Compile).identity
     ) ++ genericStartScriptSettings
 }
