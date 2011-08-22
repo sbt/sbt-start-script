@@ -9,13 +9,27 @@ object StartScriptBuild extends Build {
 
     lazy val rootSettings = Defaults.defaultSettings ++
         Seq(sbtPlugin := true,
-            organization := "com.typesafe",
+            organization := "com.typesafe.startscript",
             name := "xsbt-start-script-plugin",
-            version := "0.1",
+            // to release, bump number and drop SNAPSHOT, tag and publish,
+            // then add SNAPSHOT back so git master has SNAPSHOT
+            version := "0.1-SNAPSHOT",
             libraryDependencies <++= sbtVersion {
 		(version) =>
 		    Seq("org.scala-tools.sbt" %% "io" % version % "provided",
 			"org.scala-tools.sbt" %% "logging" % version % "provided",
 			"org.scala-tools.sbt" %% "process" % version % "provided")
-            })
+            },
+            // publish stuff
+            projectID <<= (projectID, sbtVersion) { (id, version) => id.extra("sbtversion" -> version.toString) },
+            publishTo <<= (version) { version =>
+                val typesafeRepoUrl =
+                    if (version endsWith "SNAPSHOT")
+                        new java.net.URL("http://repo.typesafe.com/typesafe/ivy-snapshots")
+                    else
+                        new java.net.URL("http://repo.typesafe.com/typesafe/ivy-releases")
+                    val pattern = Patterns(false, "[organisation]/[module]/[sbtversion]/[revision]/[type]s/[module](-[classifier])-[revision].[ext]")
+                    Some(Resolver.url("Typesafe Repository", typesafeRepoUrl)(pattern))
+            },
+            credentials += Credentials(Path.userHome / ".ivy2" / ".typesafe-credentials"))
 }
