@@ -9,33 +9,56 @@ app in production.
 
 The plugin adds a task `start-script` which generates `target/start`.
 It also adds a `stage` task, aliased to the `start-script` task.
+
 `stage` by convention performs any tasks needed to prepare an app to
 be run in-place. Other plugins that use a different approach to
 prepare an app to run could define `stage` as well, while
 `start-script` is specific to this plugin.
 
+The `target/start` script must be run from the root build directory
+(note: NOT the root _project_ directory). This allows inter-project
+dependencies within your build to work properly.
+
 ## Details
 
-There are two ways to use the plugin.
+To add the plugin, use this code to depend on it:
 
-The first is to install it globally, for now by dropping
-StartScriptPlugin.scala in `~/.sbt/plugins/` (FIXME once we publish the
-directions here change).
+    resolvers += {
+      val typesafeRepoUrl = new java.net.URL("http://repo.typesafe.com/typesafe/ivy-snapshots")
+      val pattern = Patterns(false, "[organisation]/[module]/[sbtversion]/[revision]/[type]s/[module](-[classifier])-[revision].[ext]")
+      Resolver.url("Typesafe Ivy Snapshot Repository", typesafeRepoUrl)(pattern)
+    }
+
+    libraryDependencies <<= (libraryDependencies, sbtVersion) { (deps, version) =>
+      deps :+ ("com.typesafe.startscript" %% "xsbt-start-script-plugin" % "0.1-SNAPSHOT" extra("sbtversion" -> version))
+    }
+
+You can place that code in `~/.sbt/plugins/build.sbt` to install the
+plugin globally, or in YOURPROJECT/project/plugins/build.sbt to
+install the plugin for your project.
 
 If you install the plugin globally, it will add a command
-`add-start-script-tasks` to every project using SBT. You can run
-this command to add the tasks from the plugin, such as `start-script`
-(the `start-script` task won't exist until you
-`add-start-script-tasks`, to avoid interfering with projects that
-use the plugin directly and override `start-script`).
+`add-start-script-tasks` to every project using SBT. You can run this
+command to add the tasks from the plugin, such as `start-script` (the
+`start-script` task won't exist until you `add-start-script-tasks`).
 
-The second way to use it is to incorporate it into your project, and
-then add the plugin settings to your settings. In build.sbt this might
-look like `seq(startScriptForClassesSettings :_*)` for example. (FIXME
-describe how to add the plugin to libraryDependencies, once it's
-published)
+If you incorporate the plugin into your project, then you'll want to
+explicitly add the settings from the plugin, such as the
+`start-script` task, to your project. In this case there's no need to
+use `add-start-script-tasks` since you'll already add them in your
+build.
 
-You have to choose which settings to add from:
+Here's how you add the settings from the plugin in a `build.sbt`:
+
+    import com.typesafe.startscript.StartScriptPlugin
+
+    seq(StartScriptPlugin.startScriptForClassesSettings: _*)
+
+In an SBT "full configuration" you would do something like:
+
+    settings = StartScriptPlugin.startScriptForClassesSettings
+
+You have to choose which settings to add from these options:
 
  - `startScriptForClassesSettings`  (the script will run from .class files)
  - `startScriptForJarSettings`      (the script will run from .jar file from 'package')
