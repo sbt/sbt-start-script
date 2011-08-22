@@ -108,6 +108,11 @@ object StartScriptPlugin extends Plugin {
 
     case class RelativeClasspathString(value: String)
 
+    ///// The "stage" setting is generic and may also be used by other plugins
+    ///// to accomplish staging in a different way (other than a start script)
+
+    val stage = TaskKey[Unit]("stage", "Prepares the project to be run, in environments that deploy source trees rather than packages.")
+
     ///// Settings keys
 
     val startScriptFile = SettingKey[File]("start-script-name")
@@ -399,6 +404,10 @@ exit 1
         }
     }
 
+    def stageTask(startScriptFile: File) = {
+        // we don't do anything for now
+    }
+
     // apps can manually add these settings (in the way you'd use WebPlugin.webSettings),
     // or you can install the plugin globally and use add-start-script-tasks to add
     // these settings to any project.
@@ -408,7 +417,8 @@ exit 1
         startScriptBaseDirectory <<= (thisProjectRef) { (ref) => new File(ref.build) },
         startScriptNotDefined in Compile <<= (streams, startScriptFile in Compile) map startScriptNotDefinedTask,
         relativeDependencyClasspathString in Compile <<= (startScriptBaseDirectory, dependencyClasspath in Runtime) map relativeClasspathStringTask,
-        relativeFullClasspathString in Compile <<= (startScriptBaseDirectory, fullClasspath in Runtime) map relativeClasspathStringTask
+        relativeFullClasspathString in Compile <<= (startScriptBaseDirectory, fullClasspath in Runtime) map relativeClasspathStringTask,
+        stage in Compile <<= (startScript in Compile) map stageTask
     )
 
     // settings to be added to a web plugin project
