@@ -1,11 +1,18 @@
-This plugin allows you to generate a script `target/start` for a project
-which will run that project with the proper classpath.
+This plugin allows you to generate a script `target/start` for a
+project.  The script will run the project "in-place" (without having
+to build a package first).
 
-For now, the best way to use this plugin is to add it globally by
-dropping `StartScriptPlugin.scala` into `~/.sbt/plugins` then
-use `add-start-script-tasks` followed by `start-script`
+The `target/start` script is similar to `sbt run` but it doesn't rely
+on SBT. `sbt run` is not recommended for production use because it
+keeps SBT itself in-memory. `target/start` is intended to run an
+app in production.
 
-It will be easier to use "normally" once it's published somewhere.
+The plugin adds a task `start-script` which generates `target/start`.
+It also adds a `stage` task, aliased to the `start-script` task.
+`stage` by convention performs any tasks needed to prepare an app to
+be run in-place. Other plugins that use a different approach to
+prepare an app to run could define `stage` as well, while
+`start-script` is specific to this plugin.
 
 ## Details
 
@@ -24,21 +31,16 @@ use the plugin directly and override `start-script`).
 
 The second way to use it is to incorporate it into your project, and
 then add the plugin settings to your settings. In build.sbt this might
-look like `seq(startScriptClassesSettings :_*)` for example. (FIXME
+look like `seq(startScriptForClassesSettings :_*)` for example. (FIXME
 describe how to add the plugin to libraryDependencies, once it's
 published)
 
 You have to choose which settings to add from:
 
- - `startScriptClassesSettings`  (the script will run from .class files)
- - `startScriptJarSettings`      (the script will run from .jar file from 'package')
- - `startScriptWarSettings`      (the script will run a .war with Jetty)
+ - `startScriptForClassesSettings`  (the script will run from .class files)
+ - `startScriptForJarSettings`      (the script will run from .jar file from 'package')
+ - `startScriptForWarSettings`      (the script will run a .war with Jetty)
 
-`startScriptWarSettings` requires
+`startScriptForWarSettings` requires
 https://github.com/siasia/xsbt-web-plugin/ to provide the
 `package-war` task.
-
-After you add these settings, you also need to alias `start-script` to
-the implementation task you selected, for example: `startScript in Compile <<= (startScriptForWar in Compile).identity`  (FIXME this should be automatic)
-
-When you run it, the task `start-script` creates a file `target/start` which starts your app.
