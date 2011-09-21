@@ -12,7 +12,8 @@ object StartScriptBuild extends Build {
             organization := "com.typesafe.startscript",
             name := "xsbt-start-script-plugin",
             // to release, bump number and drop SNAPSHOT, tag and publish,
-            // then add SNAPSHOT back so git master has SNAPSHOT
+            // then add SNAPSHOT back so git master has SNAPSHOT.
+            // Also, change the version number in the README.md
             version := "0.2.0",
             libraryDependencies <++= sbtVersion {
 		(version) =>
