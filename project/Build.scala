@@ -14,6 +14,7 @@ object StartScriptBuild extends Build {
             // to release, bump number and drop SNAPSHOT, tag and publish,
             // then add SNAPSHOT back so git master has SNAPSHOT.
             // Also, change the version number in the README.md
+            // Versions and git tags should follow: http://semver.org/
             version := "0.2.0",
             libraryDependencies <++= sbtVersion {
 		(version) =>
