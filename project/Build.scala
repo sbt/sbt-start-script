@@ -13,7 +13,7 @@ object StartScriptBuild extends Build {
             name := "xsbt-start-script-plugin",
             // to release, bump number and drop SNAPSHOT, tag and publish,
             // then add SNAPSHOT back so git master has SNAPSHOT
-            version := "0.1-SNAPSHOT",
+            version := "0.2.0",
             libraryDependencies <++= sbtVersion {
 		(version) =>
 		    Seq("org.scala-tools.sbt" %% "io" % version % "provided",
