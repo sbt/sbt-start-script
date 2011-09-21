@@ -67,3 +67,11 @@ You have to choose which settings to add from these options:
 `startScriptForWarSettings` requires
 https://github.com/siasia/xsbt-web-plugin/ to provide the
 `package-war` task.
+
+If you have an aggregate project, you may want a `stage` task even
+though there's nothing to run, just so it will recurse into sub-projects.
+One way to get a `stage` task that does nothing is:
+
+    StartScriptPlugin.stage in Compile := Unit
+
+which sets the `stage` key to `Unit`.
