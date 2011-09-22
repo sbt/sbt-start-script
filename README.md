@@ -24,7 +24,7 @@ dependencies within your build to work properly.
 To add the plugin, use this code to depend on it:
 
     resolvers += {
-      val typesafeRepoUrl = new java.net.URL("http://repo.typesafe.com/typesafe/ivy-snapshots")
+      val typesafeRepoUrl = new java.net.URL("http://repo.typesafe.com/typesafe/ivy-releases")
       val pattern = Patterns(false, "[organisation]/[module]/[sbtversion]/[revision]/[type]s/[module](-[classifier])-[revision].[ext]")
       Resolver.url("Typesafe Ivy Snapshot Repository", typesafeRepoUrl)(pattern)
     }
