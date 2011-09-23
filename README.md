@@ -21,7 +21,7 @@ dependencies within your build to work properly.
 
 ## Details
 
-To add the plugin, use this code to depend on it:
+To add the plugin with SBT 0.10.x, use this code to depend on it:
 
     resolvers += {
       val typesafeRepoUrl = new java.net.URL("http://repo.typesafe.com/typesafe/ivy-releases")
@@ -32,6 +32,12 @@ To add the plugin, use this code to depend on it:
     libraryDependencies <<= (libraryDependencies, sbtVersion) { (deps, version) =>
       deps :+ ("com.typesafe.startscript" %% "xsbt-start-script-plugin" % "0.2.0" extra("sbtversion" -> version))
     }
+
+With SBT 0.11.x, you can use this simpler code:
+
+    resolvers += Classpaths.typesafeResolver
+
+    addSbtPlugin("com.typesafe.startscript" % "xsbt-start-script-plugin" % "0.2.1-SNAPSHOT")
 
 You can place that code in `~/.sbt/plugins/build.sbt` to install the
 plugin globally, or in YOURPROJECT/project/plugins/build.sbt to

@@ -11,27 +11,30 @@ object StartScriptBuild extends Build {
         Seq(sbtPlugin := true,
             organization := "com.typesafe.startscript",
             name := "xsbt-start-script-plugin",
-            // to release, bump number and drop SNAPSHOT, tag and publish,
-            // then add SNAPSHOT back so git master has SNAPSHOT.
+            scalacOptions := Seq("-unchecked", "-deprecation"),
+
+            // to release, bump major/minor/micro as appropriate,
+            // drop SNAPSHOT, tag and publish.
+            // add snapshot back so git master is a SNAPSHOT.
+            // when releasing a SNAPSHOT to the repo, bump the micro
+            // version at least.
             // Also, change the version number in the README.md
             // Versions and git tags should follow: http://semver.org/
-            version := "0.2.0",
+            // except using -SNAPSHOT instead of without hyphen.
+
+            version := "0.2.1-SNAPSHOT",
             libraryDependencies <++= sbtVersion {
 		(version) =>
 		    Seq("org.scala-tools.sbt" %% "io" % version % "provided",
 			"org.scala-tools.sbt" %% "logging" % version % "provided",
 			"org.scala-tools.sbt" %% "process" % version % "provided")
             },
+
             // publish stuff
-            projectID <<= (projectID, sbtVersion) { (id, version) => id.extra("sbtversion" -> version.toString) },
-            publishTo <<= (version) { version =>
-                val typesafeRepoUrl =
-                    if (version endsWith "SNAPSHOT")
-                        new java.net.URL("http://repo.typesafe.com/typesafe/ivy-snapshots")
-                    else
-                        new java.net.URL("http://repo.typesafe.com/typesafe/ivy-releases")
-                    val pattern = Patterns(false, "[organisation]/[module]/[sbtversion]/[revision]/[type]s/[module](-[classifier])-[revision].[ext]")
-                    Some(Resolver.url("Typesafe Repository", typesafeRepoUrl)(pattern))
+            publishTo <<= (version) { v =>
+                import Classpaths._
+                Option(if (v endsWith "SNAPSHOT") typesafeSnapshots else typesafeResolver)
             },
+            publishMavenStyle := false,
             credentials += Credentials(Path.userHome / ".ivy2" / ".typesafe-credentials"))
 }

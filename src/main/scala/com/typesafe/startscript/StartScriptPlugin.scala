@@ -38,8 +38,8 @@ object StartScriptPlugin extends Plugin {
     }
 
     private def resolveStartScriptSetting(extracted: Extracted, log: Logger): Seq[Setting[_]] = {
-        val maybePackageWar = getOpt(extracted, (packageWar in Compile).scoped)
-        val maybeExportJars = getOpt(extracted, (exportJars in Compile).scoped)
+        val maybePackageWar = getOpt(extracted, (packageWar in Compile).scopedKey)
+        val maybeExportJars = getOpt(extracted, (exportJars in Compile).scopedKey)
 
         if (maybePackageWar.isDefined) {
             log.info("Aliasing start-script to start-script-for-war in " + extractedLabel(extracted))
@@ -52,7 +52,7 @@ object StartScriptPlugin extends Plugin {
             startScriptForClassesSettings
         } else {
             log.info("Aliasing start-script to start-script-not-defined in " + extractedLabel(extracted))
-            genericStartScriptSettings ++ Seq(startScript in Compile <<= (startScriptNotDefined in Compile).identity)
+            genericStartScriptSettings ++ Seq(startScript in Compile <<= startScriptNotDefined in Compile)
         }
     }
 
@@ -65,6 +65,7 @@ object StartScriptPlugin extends Plugin {
     private def reloadWithAppended(state: State, appendSettings: Seq[Setting[_]]): State = {
         val session = Project.session(state)
         val structure = Project.structure(state)
+        implicit val display = Project.showContextKey(state)
 
         // reloads with appended settings
 	val newStructure = Load.reapply(session.original ++ appendSettings, structure)
@@ -76,6 +77,7 @@ object StartScriptPlugin extends Plugin {
 
     private def getStartScriptTaskSettings(state: State, ref: ProjectRef): Seq[Setting[_]] = {
         val log = CommandSupport.logger(state)
+        implicit val display = Project.showContextKey(state)
         val extracted = Extracted(Project.structure(state), Project.session(state), ref)
 
         log.debug("Analyzing startScript tasks for " + extractedLabel(extracted))
@@ -167,7 +169,7 @@ object StartScriptPlugin extends Plugin {
                 if (fPath.startsWith(basePath)) {
                     new File("." + fPath.substring(basePath.length))
                 } else {
-                    error("Internal bug: %s contains %s but is not a prefix of it".format(basePath, fPath))
+                    sys.error("Internal bug: %s contains %s but is not a prefix of it".format(basePath, fPath))
                 }
             } else {
                 // leave it as-is, don't even canonicalize
@@ -181,7 +183,7 @@ object StartScriptPlugin extends Plugin {
         for (m <- substRegex findAllIn template) {
             val withoutAts = m.substring(1, m.length - 1)
             if (!fields.contains(withoutAts))
-                error("Template has variable %s which is not in the substitution map %s".format(withoutAts, fields))
+                sys.error("Template has variable %s which is not in the substitution map %s".format(withoutAts, fields))
         }
         // this is neither fast nor very correct (since if a value contains an @@ we'd substitute
         // on a substitution) but it's fine for private ad hoc use where we know it doesn't
@@ -189,7 +191,7 @@ object StartScriptPlugin extends Plugin {
         fields.iterator.foldLeft(template)({ (s, kv) =>
             val withAts = "@" + kv._1 + "@"
             if (!s.contains(withAts))
-                error("Template does not contain variable " + withAts)
+                sys.error("Template does not contain variable " + withAts)
             s.replace(withAts, kv._2)
         })
     }
@@ -356,7 +358,7 @@ exit 1
             val jettyURL = new URL(jettyURLString)
             val jettyDistBasename = basenameFromURL(jettyURL)
             if (!jettyDistBasename.endsWith(".zip"))
-                error("%s doesn't end with .zip".format(jettyDistBasename))
+                sys.error("%s doesn't end with .zip".format(jettyDistBasename))
             val jettyHome = target / jettyDistBasename.substring(0, jettyDistBasename.length - ".zip".length)
 
             val zipFile = target / jettyDistBasename
@@ -369,7 +371,7 @@ exit 1
             val sha1 = Hash.toHex(Hash(zipFile))
             if (sha1 != jettyChecksum) {
                 streams.log.error("%s has checksum %s expected %s".format(jettyURL.toExternalForm, sha1, jettyChecksum))
-                error("Bad checksum on Jetty distribution")
+                sys.error("Bad checksum on Jetty distribution")
             }
             try {
                 IO.delete(jettyHome)
@@ -381,7 +383,7 @@ exit 1
             // check that all the unzipped files went where expected
             files foreach { f =>
                 if (!f.getCanonicalPath.startsWith(jettyHomePrefix))
-                    error("Unzipped jetty file %s that isn't in %s".format(f, jettyHome))
+                    sys.error("Unzipped jetty file %s that isn't in %s".format(f, jettyHome))
             }
             streams.log.debug("Unzipped %d files to %s".format(files.size, jettyHome))
 
@@ -424,24 +426,24 @@ exit 1
     // settings to be added to a web plugin project
     val startScriptForWarSettings: Seq[Project.Setting[_]] = Seq(
         // hardcoding these defaults is not my favorite, but I'm not sure what else to do exactly.
-        startScriptJettyVersion in Compile :== "7.3.0.v20110203",
-        startScriptJettyChecksum in Compile :== "46ea33c033ca2597592cae294d23917079e1095d",
+        startScriptJettyVersion in Compile := "7.3.0.v20110203",
+        startScriptJettyChecksum in Compile := "46ea33c033ca2597592cae294d23917079e1095d",
         startScriptJettyURL in Compile <<= (startScriptJettyVersion in Compile) { (version) =>  "http://download.eclipse.org/jetty/" + version + "/dist/jetty-distribution-" + version + ".zip" },
-        startScriptJettyContextPath in Compile :== "/",
+        startScriptJettyContextPath in Compile := "/",
         startScriptJettyHome in Compile <<= (streams, target, startScriptJettyURL in Compile, startScriptJettyChecksum in Compile) map startScriptJettyHomeTask,
         startScriptForWar in Compile <<= (streams, startScriptBaseDirectory, startScriptFile in Compile, packageWar in Compile, startScriptJettyHome in Compile, startScriptJettyContextPath in Compile) map startScriptForWarTask,
-        startScript in Compile <<= (startScriptForWar in Compile).identity
+        startScript in Compile <<= startScriptForWar in Compile
     ) ++ genericStartScriptSettings
 
     // settings to be added to a project with an exported jar
     val startScriptForJarSettings: Seq[Project.Setting[_]] = Seq(
         startScriptForJar in Compile <<= (streams, startScriptBaseDirectory, startScriptFile in Compile, packageBin in Compile, relativeDependencyClasspathString in Compile, mainClass in Compile) map startScriptForJarTask,
-        startScript in Compile <<= (startScriptForJar in Compile).identity
+        startScript in Compile <<= startScriptForJar in Compile
     ) ++ genericStartScriptSettings
 
     // settings to be added to a project that doesn't export a jar
     val startScriptForClassesSettings: Seq[Project.Setting[_]] = Seq(
         startScriptForClasses in Compile <<= (streams, startScriptBaseDirectory, startScriptFile in Compile, relativeFullClasspathString in Compile, mainClass in Compile) map startScriptForClassesTask,
-        startScript in Compile <<= (startScriptForClasses in Compile).identity
+        startScript in Compile <<= startScriptForClasses in Compile
     ) ++ genericStartScriptSettings
 }
