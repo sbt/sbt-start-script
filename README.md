@@ -35,7 +35,7 @@ To add the plugin with SBT 0.10.x, use this code to depend on it:
 
 With SBT 0.11.x, you can use this simpler code:
 
-    resolvers += Classpaths.typesafeResolver
+    resolvers += Classpaths.typesafeSnapshots
 
     addSbtPlugin("com.typesafe.startscript" % "xsbt-start-script-plugin" % "0.3.0")
 
