@@ -81,3 +81,14 @@ One way to get a `stage` task that does nothing is:
     StartScriptPlugin.stage in Compile := Unit
 
 which sets the `stage` key to `Unit`.
+
+## License
+
+xsbt-start-script-plugin is open source software licensed under the [Apache 2.0 License](http://www.apache.org/licenses/LICENSE-2.0.html).
+
+## Contribution policy
+
+Contributions via GitHub pull requests are gladly accepted from their original author.
+Along with any pull requests, please state that the contribution is your original work
+and that you license the work to the xsbt-start-script-plugin project under the project's
+open source license.
