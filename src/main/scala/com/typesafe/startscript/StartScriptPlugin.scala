@@ -426,8 +426,8 @@ exit 1
     // settings to be added to a web plugin project
     val startScriptForWarSettings: Seq[Project.Setting[_]] = Seq(
         // hardcoding these defaults is not my favorite, but I'm not sure what else to do exactly.
-        startScriptJettyVersion in Compile := "7.3.0.v20110203",
-        startScriptJettyChecksum in Compile := "46ea33c033ca2597592cae294d23917079e1095d",
+        startScriptJettyVersion in Compile := "7.3.1.v20110307",
+        startScriptJettyChecksum in Compile := "10cb58096796e2f1d4989590a4263c34ae9419be",
         startScriptJettyURL in Compile <<= (startScriptJettyVersion in Compile) { (version) =>  "http://download.eclipse.org/jetty/" + version + "/dist/jetty-distribution-" + version + ".zip" },
         startScriptJettyContextPath in Compile := "/",
         startScriptJettyHome in Compile <<= (streams, target, startScriptJettyURL in Compile, startScriptJettyChecksum in Compile) map startScriptJettyHomeTask,
