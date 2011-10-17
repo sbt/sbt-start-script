@@ -428,7 +428,7 @@ exit 1
         // hardcoding these defaults is not my favorite, but I'm not sure what else to do exactly.
         startScriptJettyVersion in Compile := "7.3.1.v20110307",
         startScriptJettyChecksum in Compile := "10cb58096796e2f1d4989590a4263c34ae9419be",
-        startScriptJettyURL in Compile <<= (startScriptJettyVersion in Compile) { (version) =>  "http://download.eclipse.org/jetty/" + version + "/dist/jetty-distribution-" + version + ".zip" },
+        startScriptJettyURL in Compile <<= (startScriptJettyVersion in Compile) { (version) =>  "http://archive.eclipse.org/jetty/" + version + "/dist/jetty-distribution-" + version + ".zip" },
         startScriptJettyContextPath in Compile := "/",
         startScriptJettyHome in Compile <<= (streams, target, startScriptJettyURL in Compile, startScriptJettyChecksum in Compile) map startScriptJettyHomeTask,
         startScriptForWar in Compile <<= (streams, startScriptBaseDirectory, startScriptFile in Compile, packageWar in Compile, startScriptJettyHome in Compile, startScriptJettyContextPath in Compile) map startScriptForWarTask,
