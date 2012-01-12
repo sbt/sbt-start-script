@@ -197,7 +197,7 @@ object StartScriptPlugin extends Plugin {
     }
 
     private def relativeClasspathStringTask(baseDirectory: File, cp: Classpath) = {
-        RelativeClasspathString(cp.files map { f => relativizeFile(baseDirectory, f) } mkString("", ":", ""))
+        RelativeClasspathString(cp.files map { f => relativizeFile(baseDirectory, f) } mkString("", java.io.File.pathSeparator, ""))
     }
 
     // generate shell script that checks we're in the right directory
