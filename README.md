@@ -37,7 +37,7 @@ With SBT 0.11.x, you can use this simpler code:
 
     resolvers += Classpaths.typesafeResolver
 
-    addSbtPlugin("com.typesafe.startscript" % "xsbt-start-script-plugin" % "0.5.0")
+    addSbtPlugin("com.typesafe.startscript" % "xsbt-start-script-plugin" % "0.5.1")
 
 You can place that code in `~/.sbt/plugins/build.sbt` to install the
 plugin globally, or in YOURPROJECT/project/plugins/build.sbt to
