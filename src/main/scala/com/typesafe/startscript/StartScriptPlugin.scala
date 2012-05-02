@@ -244,9 +244,7 @@ fi
 
 @MAIN_CLASS_SETUP@
 
-java $JAVA_OPTS -cp "@CLASSPATH@" "$MAINCLASS" "$@"
-
-exit 0
+exec java $JAVA_OPTS -cp "@CLASSPATH@" "$MAINCLASS" "$@"
 
 """
         val script = renderTemplate(template, Map("SCRIPT_ROOT_CHECK" -> scriptRootCheck(baseDirectory, scriptFile, None),
@@ -269,8 +267,7 @@ exit 0
 
 @MAIN_CLASS_SETUP@
 
-java $JAVA_OPTS -cp "@CLASSPATH@" "$MAINCLASS" "$@"
-exit 0
+exec java $JAVA_OPTS -cp "@CLASSPATH@" "$MAINCLASS" "$@"
 
 """
 
@@ -314,9 +311,7 @@ if test x"$PORT" = x ; then
     PORT=8080
 fi
 
-java $JAVA_OPTS -Djetty.port="$PORT" -Djetty.home="@JETTY_HOME@" -jar "@JETTY_HOME@/start.jar" "$@"
-
-exit 0
+exec java $JAVA_OPTS -Djetty.port="$PORT" -Djetty.home="@JETTY_HOME@" -jar "@JETTY_HOME@/start.jar" "$@"
 
 """
         val relativeWarFile = relativizeFile(baseDirectory, warFile)
