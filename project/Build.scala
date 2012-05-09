@@ -25,9 +25,9 @@ object StartScriptBuild extends Build {
             version := "0.5.1-SNAPSHOT",
             libraryDependencies <++= sbtVersion {
 		(version) =>
-		    Seq("org.scala-tools.sbt" %% "io" % version % "provided",
-			"org.scala-tools.sbt" %% "logging" % version % "provided",
-			"org.scala-tools.sbt" %% "process" % version % "provided")
+		    Seq("org.scala-sbt" %% "io" % version % "provided",
+			"org.scala-sbt" %% "logging" % version % "provided",
+			"org.scala-sbt" %% "process" % version % "provided")
             },
 
             // publish stuff
