@@ -30,7 +30,7 @@ To add the plugin with SBT 0.10.x, use this code to depend on it:
     }
 
     libraryDependencies <<= (libraryDependencies, sbtVersion) { (deps, version) =>
-      deps :+ ("com.typesafe.startscript" %% "xsbt-start-script-plugin" % "0.2.0" extra("sbtversion" -> version))
+      deps :+ ("com.typesafe.startscript" %% "xsbt-start-script-plugin" % "0.5.2" extra("sbtversion" -> version))
     }
 
 With SBT 0.11.x, you can use this simpler code:
