@@ -203,19 +203,17 @@ object StartScriptPlugin extends Plugin {
     // generate shell script that checks we're in the right directory
     // by checking that the script itself exists.
     private def scriptRootCheck(baseDirectory: File, scriptFile: File, otherFile: Option[File]): String = {
-        val relativeScript = relativizeFile(baseDirectory, scriptFile)
-        val template = """
-function die() {
-    echo "$*" 1>&2
-    exit 1
-}
-test -x '@RELATIVE_SCRIPT@' || die "'@RELATIVE_SCRIPT@' not found, this script must be run from the project base directory"
-"""
-        val part = renderTemplate(template, Map("RELATIVE_SCRIPT" -> relativeScript.toString))
-        otherFile.foldLeft(part)({ (firstPart, file) =>
-            firstPart + renderTemplate("""test -e '@OTHER_FILE@' || die "'@OTHER_FILE@' not found, this script must be run from the project base directory"""",
-                                       Map("OTHER_FILE" -> file.toString))
-        })
+      """
+        |function die() {
+        |    echo "$*" 1>&2
+        |    exit 1
+        |}
+        |
+        |DIR=`dirname $BASH_SOURCE`
+        |BASE=`basename $0`
+        |
+        |test -x "$DIR/$BASE" || die "\"$DIR/$BASE\" not found, this script must be run from the project base directory"
+        |                       """.stripMargin
     }
 
     private def mainClassSetup(maybeMainClass: Option[String]): String = {
@@ -248,7 +246,7 @@ exec java $JAVA_OPTS -cp "@CLASSPATH@" "$MAINCLASS" "$@"
 
 """
         val script = renderTemplate(template, Map("SCRIPT_ROOT_CHECK" -> scriptRootCheck(baseDirectory, scriptFile, None),
-                                                  "CLASSPATH" -> cpString.value,
+                                                  "CLASSPATH" -> (cpString.value),
                                                   "MAIN_CLASS_SETUP" -> mainClassSetup(maybeMainClass)))
         writeScript(scriptFile, script)
         streams.log.info("Wrote start script for mainClass := " + maybeMainClass + " to " + scriptFile)
@@ -274,7 +272,7 @@ exec java $JAVA_OPTS -cp "@CLASSPATH@" "$MAINCLASS" "$@"
         val relativeJarFile = relativizeFile(baseDirectory, jarFile)
 
         val script = renderTemplate(template, Map("SCRIPT_ROOT_CHECK" -> scriptRootCheck(baseDirectory, scriptFile, Some(relativeJarFile)),
-                                                  "CLASSPATH" -> cpString.value,
+                                                  "CLASSPATH" -> (cpString.value),
                                                   "MAIN_CLASS_SETUP" -> mainClassSetup(maybeMainClass)))
         writeScript(scriptFile, script)
         streams.log.info("Wrote start script for jar " + relativeJarFile + " to " + scriptFile + " with mainClass := " + maybeMainClass)
