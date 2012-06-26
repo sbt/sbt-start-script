@@ -2,12 +2,24 @@ import sbt._
 
 import Keys._
 import Project.Initialize
+import com.typesafe.sbtscalariform.ScalariformPlugin
+import com.typesafe.sbtscalariform.ScalariformPlugin.ScalariformKeys
 
 object StartScriptBuild extends Build {
+    def formatPrefs = {
+        import scalariform.formatter.preferences._
+        FormattingPreferences()
+           .setPreference(IndentSpaces, 4)
+    }
+
     lazy val root =
         Project("root", file("."), settings = rootSettings)
 
     lazy val rootSettings = Defaults.defaultSettings ++
+        // formatting
+        ScalariformPlugin.scalariformSettings ++ Seq(
+            ScalariformKeys.preferences in Compile := formatPrefs,
+            ScalariformKeys.preferences in Test    := formatPrefs) ++
         Seq(sbtPlugin := true,
             organization := "com.typesafe.startscript",
             name := "xsbt-start-script-plugin",

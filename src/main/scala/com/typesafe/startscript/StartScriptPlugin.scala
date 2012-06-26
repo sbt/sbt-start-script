@@ -24,7 +24,7 @@ object StartScriptPlugin extends Plugin {
     // surely this is harder than it has to be
     private def extractedLabel(extracted: Extracted): String = {
         val ref = extracted.currentRef
-	val structure = extracted.structure
+        val structure = extracted.structure
         val project = Load.getProject(structure.units, ref.build, ref.project)
         Keys.name in ref get structure.data getOrElse ref.project
     }
@@ -47,7 +47,7 @@ object StartScriptPlugin extends Plugin {
         } else if (maybeExportJars.isDefined && maybeExportJars.get) {
             log.info("Aliasing start-script to start-script-for-jar in " + extractedLabel(extracted))
             startScriptForJarSettings
-        } else if (true /* can't figure out how to decide this ("is there a main class?") without compiling first */) {
+        } else if (true /* can't figure out how to decide this ("is there a main class?") without compiling first */ ) {
             log.info("Aliasing start-script to start-script-for-classes in " + extractedLabel(extracted))
             startScriptForClassesSettings
         } else {
@@ -57,8 +57,8 @@ object StartScriptPlugin extends Plugin {
     }
 
     private def makeAppendSettings(settings: Seq[Setting[_]], inProject: ProjectRef, extracted: Extracted) = {
-         // transforms This scopes in 'settings' to be the desired project
-	val appendSettings = Load.transformSettings(Load.projectScope(inProject), inProject.build, extracted.rootProject, settings)
+        // transforms This scopes in 'settings' to be the desired project
+        val appendSettings = Load.transformSettings(Load.projectScope(inProject), inProject.build, extracted.rootProject, settings)
         appendSettings
     }
 
@@ -68,11 +68,11 @@ object StartScriptPlugin extends Plugin {
         implicit val display = Project.showContextKey(state)
 
         // reloads with appended settings
-	val newStructure = Load.reapply(session.original ++ appendSettings, structure)
+        val newStructure = Load.reapply(session.original ++ appendSettings, structure)
 
         // updates various aspects of State based on the new settings
         // and returns the updated State
-	Project.setProject(session, newStructure, state)
+        Project.setProject(session, newStructure, state)
     }
 
     private def getStartScriptTaskSettings(state: State, ref: ProjectRef): Seq[Setting[_]] = {
@@ -178,7 +178,7 @@ object StartScriptPlugin extends Plugin {
         }
     }
 
-    private def renderTemplate(template: String, fields: Map[String,String]) = {
+    private def renderTemplate(template: String, fields: Map[String, String]) = {
         val substRegex = """@[A-Z_]+@""".r
         for (m <- substRegex findAllIn template) {
             val withoutAts = m.substring(1, m.length - 1)
@@ -197,7 +197,7 @@ object StartScriptPlugin extends Plugin {
     }
 
     private def relativeClasspathStringTask(baseDirectory: File, cp: Classpath) = {
-        RelativeClasspathString(cp.files map { f => relativizeFile(baseDirectory, f) } mkString("", java.io.File.pathSeparator, ""))
+        RelativeClasspathString(cp.files map { f => relativizeFile(baseDirectory, f) } mkString ("", java.io.File.pathSeparator, ""))
     }
 
     // generate shell script that checks we're in the right directory
@@ -214,7 +214,7 @@ test -x '@RELATIVE_SCRIPT@' || die "'@RELATIVE_SCRIPT@' not found, this script m
         val part = renderTemplate(template, Map("RELATIVE_SCRIPT" -> relativeScript.toString))
         otherFile.foldLeft(part)({ (firstPart, file) =>
             firstPart + renderTemplate("""test -e '@OTHER_FILE@' || die "'@OTHER_FILE@' not found, this script must be run from the project base directory"""",
-                                       Map("OTHER_FILE" -> file.toString))
+                Map("OTHER_FILE" -> file.toString))
         })
     }
 
@@ -248,8 +248,8 @@ exec java $JAVA_OPTS -cp "@CLASSPATH@" "$MAINCLASS" "$@"
 
 """
         val script = renderTemplate(template, Map("SCRIPT_ROOT_CHECK" -> scriptRootCheck(baseDirectory, scriptFile, None),
-                                                  "CLASSPATH" -> cpString.value,
-                                                  "MAIN_CLASS_SETUP" -> mainClassSetup(maybeMainClass)))
+            "CLASSPATH" -> cpString.value,
+            "MAIN_CLASS_SETUP" -> mainClassSetup(maybeMainClass)))
         writeScript(scriptFile, script)
         streams.log.info("Wrote start script for mainClass := " + maybeMainClass + " to " + scriptFile)
         scriptFile
@@ -274,8 +274,8 @@ exec java $JAVA_OPTS -cp "@CLASSPATH@" "$MAINCLASS" "$@"
         val relativeJarFile = relativizeFile(baseDirectory, jarFile)
 
         val script = renderTemplate(template, Map("SCRIPT_ROOT_CHECK" -> scriptRootCheck(baseDirectory, scriptFile, Some(relativeJarFile)),
-                                                  "CLASSPATH" -> cpString.value,
-                                                  "MAIN_CLASS_SETUP" -> mainClassSetup(maybeMainClass)))
+            "CLASSPATH" -> cpString.value,
+            "MAIN_CLASS_SETUP" -> mainClassSetup(maybeMainClass)))
         writeScript(scriptFile, script)
         streams.log.info("Wrote start script for jar " + relativeJarFile + " to " + scriptFile + " with mainClass := " + maybeMainClass)
         scriptFile
@@ -298,8 +298,8 @@ exec java $JAVA_OPTS -cp "@CLASSPATH@" "$MAINCLASS" "$@"
 </Configure>
 """
         val contextFileContents = renderTemplate(contextFileTemplate,
-                                                 Map("WARFILE_BASENAME" -> warFile.getName,
-                                                     "CONTEXTPATH" -> jettyContextPath))
+            Map("WARFILE_BASENAME" -> warFile.getName,
+                "CONTEXTPATH" -> jettyContextPath))
         IO.write(contextFile, contextFileContents)
 
         val template = """#!/bin/bash
@@ -317,9 +317,9 @@ exec java $JAVA_OPTS -Djetty.port="$PORT" -Djetty.home="@JETTY_HOME@" -jar "@JET
         val relativeWarFile = relativizeFile(baseDirectory, warFile)
 
         val script = renderTemplate(template,
-                                    Map("SCRIPT_ROOT_CHECK" -> scriptRootCheck(baseDirectory, scriptFile, Some(relativeWarFile)),
-                                        "WARFILE" -> relativeWarFile.toString,
-                                        "JETTY_HOME" -> jettyHome.toString))
+            Map("SCRIPT_ROOT_CHECK" -> scriptRootCheck(baseDirectory, scriptFile, Some(relativeWarFile)),
+                "WARFILE" -> relativeWarFile.toString,
+                "JETTY_HOME" -> jettyHome.toString))
         writeScript(scriptFile, script)
 
         streams.log.info("Wrote start script for war " + relativeWarFile + " to " + scriptFile)
@@ -397,7 +397,7 @@ exit 1
         } catch {
             case e: Throwable =>
                 streams.log.error("Failure obtaining Jetty distribution: " + e.getMessage)
-            throw e
+                throw e
         }
     }
 
@@ -415,30 +415,26 @@ exit 1
         startScriptNotDefined in Compile <<= (streams, startScriptFile in Compile) map startScriptNotDefinedTask,
         relativeDependencyClasspathString in Compile <<= (startScriptBaseDirectory, dependencyClasspath in Runtime) map relativeClasspathStringTask,
         relativeFullClasspathString in Compile <<= (startScriptBaseDirectory, fullClasspath in Runtime) map relativeClasspathStringTask,
-        stage in Compile <<= (startScript in Compile) map stageTask
-    )
+        stage in Compile <<= (startScript in Compile) map stageTask)
 
     // settings to be added to a web plugin project
     val startScriptForWarSettings: Seq[Project.Setting[_]] = Seq(
         // hardcoding these defaults is not my favorite, but I'm not sure what else to do exactly.
         startScriptJettyVersion in Compile := "7.3.1.v20110307",
         startScriptJettyChecksum in Compile := "10cb58096796e2f1d4989590a4263c34ae9419be",
-        startScriptJettyURL in Compile <<= (startScriptJettyVersion in Compile) { (version) =>  "http://archive.eclipse.org/jetty/" + version + "/dist/jetty-distribution-" + version + ".zip" },
+        startScriptJettyURL in Compile <<= (startScriptJettyVersion in Compile) { (version) => "http://archive.eclipse.org/jetty/" + version + "/dist/jetty-distribution-" + version + ".zip" },
         startScriptJettyContextPath in Compile := "/",
         startScriptJettyHome in Compile <<= (streams, target, startScriptJettyURL in Compile, startScriptJettyChecksum in Compile) map startScriptJettyHomeTask,
         startScriptForWar in Compile <<= (streams, startScriptBaseDirectory, startScriptFile in Compile, packageWar in Compile, startScriptJettyHome in Compile, startScriptJettyContextPath in Compile) map startScriptForWarTask,
-        startScript in Compile <<= startScriptForWar in Compile
-    ) ++ genericStartScriptSettings
+        startScript in Compile <<= startScriptForWar in Compile) ++ genericStartScriptSettings
 
     // settings to be added to a project with an exported jar
     val startScriptForJarSettings: Seq[Project.Setting[_]] = Seq(
         startScriptForJar in Compile <<= (streams, startScriptBaseDirectory, startScriptFile in Compile, packageBin in Compile, relativeDependencyClasspathString in Compile, mainClass in Compile) map startScriptForJarTask,
-        startScript in Compile <<= startScriptForJar in Compile
-    ) ++ genericStartScriptSettings
+        startScript in Compile <<= startScriptForJar in Compile) ++ genericStartScriptSettings
 
     // settings to be added to a project that doesn't export a jar
     val startScriptForClassesSettings: Seq[Project.Setting[_]] = Seq(
         startScriptForClasses in Compile <<= (streams, startScriptBaseDirectory, startScriptFile in Compile, relativeFullClasspathString in Compile, mainClass in Compile) map startScriptForClassesTask,
-        startScript in Compile <<= startScriptForClasses in Compile
-    ) ++ genericStartScriptSettings
+        startScript in Compile <<= startScriptForClasses in Compile) ++ genericStartScriptSettings
 }
