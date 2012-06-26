@@ -10,6 +10,68 @@ import Scope.GlobalScope
 object StartScriptPlugin extends Plugin {
     override lazy val settings = Seq(commands += addStartScriptTasksCommand)
 
+    case class RelativeClasspathString(value: String)
+
+    ///// The "stage" setting is generic and may also be used by other plugins
+    ///// to accomplish staging in a different way (other than a start script)
+
+    val stage = TaskKey[Unit]("stage", "Prepares the project to be run, in environments that deploy source trees rather than packages.")
+
+    ///// Settings keys
+
+    val startScriptFile = SettingKey[File]("start-script-name")
+    val relativeDependencyClasspathString = TaskKey[RelativeClasspathString]("relative-dependency-classpath-string", "Dependency classpath as colon-separated string with each entry relative to the build root directory.")
+    val relativeFullClasspathString = TaskKey[RelativeClasspathString]("relative-full-classpath-string", "Full classpath as colon-separated string with each entry relative to the build root directory.")
+    val startScriptBaseDirectory = SettingKey[File]("start-script-base-directory", "All start scripts must be run from this directory.")
+    val startScriptForWar = TaskKey[File]("start-script-for-war", "Generate a shell script to launch the war file")
+    val startScriptForJar = TaskKey[File]("start-script-for-jar", "Generate a shell script to launch the jar file")
+    val startScriptForClasses = TaskKey[File]("start-script-for-classes", "Generate a shell script to launch from classes directory")
+    val startScriptNotDefined = TaskKey[File]("start-script-not-defined", "Generate a shell script that just complains that the project is not launchable")
+    val startScript = TaskKey[File]("start-script", "Generate a shell script that runs the application")
+
+    // jetty-related settings keys
+    val startScriptJettyVersion = SettingKey[String]("start-script-jetty-version", "Version of Jetty to use for running the .war")
+    val startScriptJettyChecksum = SettingKey[String]("start-script-jetty-checksum", "Expected SHA-1 of the Jetty distribution we intend to download")
+    val startScriptJettyURL = SettingKey[String]("start-script-jetty-url", "URL of the Jetty distribution to download (if set, then it overrides the start-script-jetty-version)")
+    val startScriptJettyContextPath = SettingKey[String]("start-script-jetty-context-path", "Context path for the war file when deployed to Jetty")
+    val startScriptJettyHome = TaskKey[File]("start-script-jetty-home", "Download Jetty distribution and return JETTY_HOME")
+
+    // this is in WebPlugin, but we don't want to rely on WebPlugin to build
+    private val packageWar = TaskKey[File]("package-war")
+
+    // apps can manually add these settings (in the way you'd use WebPlugin.webSettings),
+    // or you can install the plugin globally and use add-start-script-tasks to add
+    // these settings to any project.
+    val genericStartScriptSettings: Seq[Project.Setting[_]] = Seq(
+        startScriptFile <<= (target) { (target) => target / "start" },
+        // maybe not the right way to do this...
+        startScriptBaseDirectory <<= (thisProjectRef) { (ref) => new File(ref.build) },
+        startScriptNotDefined in Compile <<= (streams, startScriptFile in Compile) map startScriptNotDefinedTask,
+        relativeDependencyClasspathString in Compile <<= (startScriptBaseDirectory, dependencyClasspath in Runtime) map relativeClasspathStringTask,
+        relativeFullClasspathString in Compile <<= (startScriptBaseDirectory, fullClasspath in Runtime) map relativeClasspathStringTask,
+        stage in Compile <<= (startScript in Compile) map stageTask)
+
+    // settings to be added to a web plugin project
+    val startScriptForWarSettings: Seq[Project.Setting[_]] = Seq(
+        // hardcoding these defaults is not my favorite, but I'm not sure what else to do exactly.
+        startScriptJettyVersion in Compile := "7.3.1.v20110307",
+        startScriptJettyChecksum in Compile := "10cb58096796e2f1d4989590a4263c34ae9419be",
+        startScriptJettyURL in Compile <<= (startScriptJettyVersion in Compile) { (version) => "http://archive.eclipse.org/jetty/" + version + "/dist/jetty-distribution-" + version + ".zip" },
+        startScriptJettyContextPath in Compile := "/",
+        startScriptJettyHome in Compile <<= (streams, target, startScriptJettyURL in Compile, startScriptJettyChecksum in Compile) map startScriptJettyHomeTask,
+        startScriptForWar in Compile <<= (streams, startScriptBaseDirectory, startScriptFile in Compile, packageWar in Compile, startScriptJettyHome in Compile, startScriptJettyContextPath in Compile) map startScriptForWarTask,
+        startScript in Compile <<= startScriptForWar in Compile) ++ genericStartScriptSettings
+
+    // settings to be added to a project with an exported jar
+    val startScriptForJarSettings: Seq[Project.Setting[_]] = Seq(
+        startScriptForJar in Compile <<= (streams, startScriptBaseDirectory, startScriptFile in Compile, packageBin in Compile, relativeDependencyClasspathString in Compile, mainClass in Compile) map startScriptForJarTask,
+        startScript in Compile <<= startScriptForJar in Compile) ++ genericStartScriptSettings
+
+    // settings to be added to a project that doesn't export a jar
+    val startScriptForClassesSettings: Seq[Project.Setting[_]] = Seq(
+        startScriptForClasses in Compile <<= (streams, startScriptBaseDirectory, startScriptFile in Compile, relativeFullClasspathString in Compile, mainClass in Compile) map startScriptForClassesTask,
+        startScript in Compile <<= startScriptForClasses in Compile) ++ genericStartScriptSettings
+
     // Extracted.getOpt is not in 10.1 and earlier
     private def inCurrent[T](extracted: Extracted, key: ScopedKey[T]): Scope = {
         if (key.scope.project == This)
@@ -107,35 +169,6 @@ object StartScriptPlugin extends Plugin {
 
             newState
         }
-
-    case class RelativeClasspathString(value: String)
-
-    ///// The "stage" setting is generic and may also be used by other plugins
-    ///// to accomplish staging in a different way (other than a start script)
-
-    val stage = TaskKey[Unit]("stage", "Prepares the project to be run, in environments that deploy source trees rather than packages.")
-
-    ///// Settings keys
-
-    val startScriptFile = SettingKey[File]("start-script-name")
-    val relativeDependencyClasspathString = TaskKey[RelativeClasspathString]("relative-dependency-classpath-string", "Dependency classpath as colon-separated string with each entry relative to the build root directory.")
-    val relativeFullClasspathString = TaskKey[RelativeClasspathString]("relative-full-classpath-string", "Full classpath as colon-separated string with each entry relative to the build root directory.")
-    val startScriptBaseDirectory = SettingKey[File]("start-script-base-directory", "All start scripts must be run from this directory.")
-    val startScriptForWar = TaskKey[File]("start-script-for-war", "Generate a shell script to launch the war file")
-    val startScriptForJar = TaskKey[File]("start-script-for-jar", "Generate a shell script to launch the jar file")
-    val startScriptForClasses = TaskKey[File]("start-script-for-classes", "Generate a shell script to launch from classes directory")
-    val startScriptNotDefined = TaskKey[File]("start-script-not-defined", "Generate a shell script that just complains that the project is not launchable")
-    val startScript = TaskKey[File]("start-script", "Generate a shell script that runs the application")
-
-    // jetty-related settings keys
-    val startScriptJettyVersion = SettingKey[String]("start-script-jetty-version", "Version of Jetty to use for running the .war")
-    val startScriptJettyChecksum = SettingKey[String]("start-script-jetty-checksum", "Expected SHA-1 of the Jetty distribution we intend to download")
-    val startScriptJettyURL = SettingKey[String]("start-script-jetty-url", "URL of the Jetty distribution to download (if set, then it overrides the start-script-jetty-version)")
-    val startScriptJettyContextPath = SettingKey[String]("start-script-jetty-context-path", "Context path for the war file when deployed to Jetty")
-    val startScriptJettyHome = TaskKey[File]("start-script-jetty-home", "Download Jetty distribution and return JETTY_HOME")
-
-    // this is in WebPlugin, but we don't want to rely on WebPlugin to build
-    private val packageWar = TaskKey[File]("package-war")
 
     private def directoryEqualsOrContains(d: File, f: File): Boolean = {
         if (d == f) {
@@ -404,37 +437,4 @@ exit 1
     def stageTask(startScriptFile: File) = {
         // we don't do anything for now
     }
-
-    // apps can manually add these settings (in the way you'd use WebPlugin.webSettings),
-    // or you can install the plugin globally and use add-start-script-tasks to add
-    // these settings to any project.
-    val genericStartScriptSettings: Seq[Project.Setting[_]] = Seq(
-        startScriptFile <<= (target) { (target) => target / "start" },
-        // maybe not the right way to do this...
-        startScriptBaseDirectory <<= (thisProjectRef) { (ref) => new File(ref.build) },
-        startScriptNotDefined in Compile <<= (streams, startScriptFile in Compile) map startScriptNotDefinedTask,
-        relativeDependencyClasspathString in Compile <<= (startScriptBaseDirectory, dependencyClasspath in Runtime) map relativeClasspathStringTask,
-        relativeFullClasspathString in Compile <<= (startScriptBaseDirectory, fullClasspath in Runtime) map relativeClasspathStringTask,
-        stage in Compile <<= (startScript in Compile) map stageTask)
-
-    // settings to be added to a web plugin project
-    val startScriptForWarSettings: Seq[Project.Setting[_]] = Seq(
-        // hardcoding these defaults is not my favorite, but I'm not sure what else to do exactly.
-        startScriptJettyVersion in Compile := "7.3.1.v20110307",
-        startScriptJettyChecksum in Compile := "10cb58096796e2f1d4989590a4263c34ae9419be",
-        startScriptJettyURL in Compile <<= (startScriptJettyVersion in Compile) { (version) => "http://archive.eclipse.org/jetty/" + version + "/dist/jetty-distribution-" + version + ".zip" },
-        startScriptJettyContextPath in Compile := "/",
-        startScriptJettyHome in Compile <<= (streams, target, startScriptJettyURL in Compile, startScriptJettyChecksum in Compile) map startScriptJettyHomeTask,
-        startScriptForWar in Compile <<= (streams, startScriptBaseDirectory, startScriptFile in Compile, packageWar in Compile, startScriptJettyHome in Compile, startScriptJettyContextPath in Compile) map startScriptForWarTask,
-        startScript in Compile <<= startScriptForWar in Compile) ++ genericStartScriptSettings
-
-    // settings to be added to a project with an exported jar
-    val startScriptForJarSettings: Seq[Project.Setting[_]] = Seq(
-        startScriptForJar in Compile <<= (streams, startScriptBaseDirectory, startScriptFile in Compile, packageBin in Compile, relativeDependencyClasspathString in Compile, mainClass in Compile) map startScriptForJarTask,
-        startScript in Compile <<= startScriptForJar in Compile) ++ genericStartScriptSettings
-
-    // settings to be added to a project that doesn't export a jar
-    val startScriptForClassesSettings: Seq[Project.Setting[_]] = Seq(
-        startScriptForClasses in Compile <<= (streams, startScriptBaseDirectory, startScriptFile in Compile, relativeFullClasspathString in Compile, mainClass in Compile) map startScriptForClassesTask,
-        startScript in Compile <<= startScriptForClasses in Compile) ++ genericStartScriptSettings
 }
