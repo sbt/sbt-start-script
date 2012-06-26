@@ -371,7 +371,7 @@ exit 1
             try {
                 IO.delete(jettyHome)
             } catch {
-                case e => // probably didn't exist
+                case e: Exception => // probably didn't exist
             }
             val files = IO.unzip(zipFile, target)
             val jettyHomePrefix = jettyHome.getCanonicalPath
@@ -395,7 +395,7 @@ exit 1
 
             jettyHome
         } catch {
-            case e: Throwable =>
+            case e: Exception =>
                 streams.log.error("Failure obtaining Jetty distribution: " + e.getMessage)
                 throw e
         }
