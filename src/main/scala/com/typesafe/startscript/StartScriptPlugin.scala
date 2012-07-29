@@ -224,7 +224,7 @@ object StartScriptPlugin extends Plugin {
   private def mainClassSetup(maybeMainClass: Option[String]): String = {
     maybeMainClass match {
       case Some(mainClass) =>
-        "MAINCLASS=" + mainClass + "\n"
+        "MAINCLASS=" + mainClass
       case None =>
         """MAINCLASS="$1"
 shift
@@ -244,7 +244,6 @@ fi
   def startScriptForClassesTask(streams: TaskStreams, baseDirectory: File, scriptFile: File, cpString: RelativeClasspathString, maybeMainClass: Option[String]) = {
     val template = """#!/bin/bash
 @SCRIPT_ROOT_CHECK@
-
 @MAIN_CLASS_SETUP@
 
 exec java $JAVA_OPTS -cp "@CLASSPATH@" "$MAINCLASS" "$@"
