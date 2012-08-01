@@ -19,7 +19,7 @@ object StartScriptBuild extends Build {
             // Versions and git tags should follow: http://semver.org/
             // except using -SNAPSHOT instead of without hyphen.
 
-            version := "0.5.2-mslinn",
+            version := "0.5.3-SNAPSHOT",
             libraryDependencies <++= sbtVersion { version =>
               Seq("org.scala-sbt" %% "io" % version % "provided",
                   "org.scala-sbt" %% "logging" % version % "provided",
