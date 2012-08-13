@@ -212,6 +212,7 @@ object StartScriptPlugin extends Plugin {
       |    exit 1
       |}
       |
+      |#set -xv # for debugging
       |
       |if [ $OSTYPE == "cygwin" ]; then
       |  DIR=`cygpath -m $(dirname $BASH_SOURCE)`
@@ -219,8 +220,6 @@ object StartScriptPlugin extends Plugin {
       |  DIR=`dirname $BASH_SOURCE`
       |fi
       |BASE=`basename $0`
-      |
-      |#set -xv # for debugging
       |
       |test -x "$DIR/$BASE" || die "\"$DIR/$BASE\" not found, this script must be run from the project base directory"
       |""".stripMargin
@@ -242,7 +241,7 @@ fi
   }
 
   private def writeScript(scriptFile: File, script: String) = {
-    IO.write(scriptFile, script)
+    IO.write(scriptFile, script.replace("\r", "")) // Cygwin does not like Mac line endings
     scriptFile.setExecutable(true)
   }
 
@@ -255,7 +254,7 @@ exec java $JAVA_OPTS -cp "@CLASSPATH@" "$MAINCLASS" "$@"
 
                    """
     val script = renderTemplate(template, Map("SCRIPT_ROOT_CHECK" -> scriptRootCheck(baseDirectory, scriptFile, None),
-      "CLASSPATH" -> ("$DIR/$BASE/../../" + cpString.value),
+      "CLASSPATH" -> (cpString.value.replace("\\", "/")),
       "MAIN_CLASS_SETUP" -> mainClassSetup(maybeMainClass)))
     writeScript(scriptFile, script)
     streams.log.info("Wrote start script for mainClass := " + maybeMainClass + " to " + scriptFile)
@@ -280,7 +279,7 @@ exec java $JAVA_OPTS -cp "@CLASSPATH@" "$MAINCLASS" "$@"
     val relativeJarFile = relativizeFile(baseDirectory, jarFile)
 
     val script = renderTemplate(template, Map("SCRIPT_ROOT_CHECK" -> scriptRootCheck(baseDirectory, scriptFile, Some(relativeJarFile)),
-      "CLASSPATH" -> ("$DIR/$BASE/../../" + cpString.value),
+      "CLASSPATH" -> (cpString.value.replace("\\", "/")),
       "MAIN_CLASS_SETUP" -> mainClassSetup(maybeMainClass)))
     writeScript(scriptFile, script)
     streams.log.info("Wrote start script for jar " + relativeJarFile + " to " + scriptFile + " with mainClass := " + maybeMainClass)
