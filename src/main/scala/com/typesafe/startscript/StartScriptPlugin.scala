@@ -212,7 +212,12 @@ object StartScriptPlugin extends Plugin {
       |    exit 1
       |}
       |
-      |DIR=`dirname $BASH_SOURCE`
+      |
+      |if [ $OSTYPE == "cygwin" ]; then
+      |  DIR=`cygpath -m $(dirname $BASH_SOURCE)`
+      |else
+      |  DIR=`dirname $BASH_SOURCE`
+      |fi
       |BASE=`basename $0`
       |
       |#set -xv # for debugging
