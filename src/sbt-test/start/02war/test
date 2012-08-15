@@ -1,0 +1,6 @@
+> start-script
+$ exists target/start
+
+# FIXME we should run the web server and test but will
+# take some figuring out how to run target/start and
+# then http GET
