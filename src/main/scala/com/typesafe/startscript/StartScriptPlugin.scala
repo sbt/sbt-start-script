@@ -138,13 +138,12 @@ object StartScriptPlugin extends Plugin {
     }
 
     private def getStartScriptTaskSettings(state: State, ref: ProjectRef): Seq[Setting[_]] = {
-        val log = CommandSupport.logger(state)
         implicit val display = Project.showContextKey(state)
         val extracted = Extracted(Project.structure(state), Project.session(state), ref)
 
-        log.debug("Analyzing startScript tasks for " + extractedLabel(extracted))
+        state.log.debug("Analyzing startScript tasks for " + extractedLabel(extracted))
 
-        val resolved = resolveStartScriptSetting(extracted, log)
+        val resolved = resolveStartScriptSetting(extracted, state.log)
 
         var settingsToAdd = Seq[Setting[_]]()
         for (s <- resolved) {
