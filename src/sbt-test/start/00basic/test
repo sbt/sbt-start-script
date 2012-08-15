@@ -1,0 +1,4 @@
+> start-script
+$ exists target/start
+> check
+

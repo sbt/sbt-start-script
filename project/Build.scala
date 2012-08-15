@@ -16,6 +16,7 @@ object StartScriptBuild extends Build {
         Project("root", file("."), settings = rootSettings)
 
     lazy val rootSettings = Defaults.defaultSettings ++
+        ScriptedPlugin.scriptedSettings ++
         // formatting
         ScalariformPlugin.scalariformSettings ++ Seq(
             ScalariformKeys.preferences in Compile := formatPrefs,
