@@ -241,7 +241,7 @@ fi
   }
 
   private def writeScript(scriptFile: File, script: String) = {
-    IO.write(scriptFile, script.replace("\r", "")) // Cygwin does not like Mac line endings
+    IO.write(scriptFile, script.replace("\r", "").trim + "\n") // Cygwin does not like Mac line endings; remove trailing whitespace
     scriptFile.setExecutable(true)
   }
 
@@ -423,7 +423,7 @@ exit 1
     },
     // maybe not the right way to do this...
     startScriptBaseDirectory <<= (thisProjectRef) {
-      (ref) => new File(ref.build)
+      (ref) => new File("ASDF") // somehow this does the right thing! Was: new File(ref.build)
     },
     startScriptNotDefined in Compile <<= (streams, startScriptFile in Compile) map startScriptNotDefinedTask,
     relativeDependencyClasspathString in Compile <<= (startScriptBaseDirectory, dependencyClasspath in Runtime) map relativeClasspathStringTask,
