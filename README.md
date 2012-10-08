@@ -33,14 +33,17 @@ To add the plugin with SBT 0.10.x, use this code to depend on it:
       deps :+ ("com.typesafe.startscript" %% "xsbt-start-script-plugin" % "0.2.0" extra("sbtversion" -> version))
     }
 
-With SBT 0.11.x, you can use this simpler code:
+Starting from SBT 0.11.x you can use this simpler code:
 
     resolvers += Classpaths.typesafeResolver
 
-    addSbtPlugin("com.typesafe.startscript" % "xsbt-start-script-plugin" % "0.5.2")
+    addSbtPlugin("com.typesafe.startscript" % "xsbt-start-script-plugin" % "0.5.3")
+    
+Note that 0.5.3 is compatible with SBT 0.12.x and 0.5.2 compatible with SBT 0.11.x 
+
 
 You can place that code in `~/.sbt/plugins/build.sbt` to install the
-plugin globally, or in YOURPROJECT/project/plugins/build.sbt to
+plugin globally, or in YOURPROJECT/project/build.sbt to
 install the plugin for your project.
 
 If you install the plugin globally, it will add a command
