@@ -22,8 +22,8 @@ object StartScriptBuild extends Build {
             ScalariformKeys.preferences in Compile := formatPrefs,
             ScalariformKeys.preferences in Test    := formatPrefs) ++
         Seq(sbtPlugin := true,
-            organization := "com.typesafe.startscript",
-            name := "xsbt-start-script-plugin",
+            organization := "com.typesafe.sbt",
+            name := "sbt-start-script",
             scalacOptions := Seq("-unchecked", "-deprecation"),
 
             // to release, bump major/minor/micro as appropriate,
@@ -45,8 +45,9 @@ object StartScriptBuild extends Build {
 
             // publish stuff
             publishTo <<= (version) { v =>
-                import Classpaths._
-                Option(if (v endsWith "SNAPSHOT") typesafeSnapshots else typesafeResolver)
+              def scalasbt(repo: String) = ("scalasbt " + repo, "http://scalasbt.artifactoryonline.com/scalasbt/sbt-plugin-" + repo)
+              val (name, repo) = if (v.endsWith("-SNAPSHOT")) scalasbt("snapshots") else scalasbt("releases")
+              Some(Resolver.url(name, url(repo))(Resolver.ivyStylePatterns))
             },
             publishMavenStyle := false,
             credentials += Credentials(Path.userHome / ".ivy2" / ".typesafe-credentials"))

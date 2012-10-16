@@ -1,7 +1,7 @@
-import com.typesafe.startscript.StartScriptPlugin
+import com.typesafe.sbt.SbtStartScript
 import com.github.siasia.WebPlugin
 
-seq(StartScriptPlugin.startScriptForWarSettings: _*)
+seq(SbtStartScript.startScriptForWarSettings: _*)
 
 seq(WebPlugin.webSettings: _*)
 

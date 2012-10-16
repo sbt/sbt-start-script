@@ -21,26 +21,12 @@ dependencies within your build to work properly.
 
 ## Details
 
-To add the plugin with SBT 0.10.x, use this code to depend on it:
+To use the plugin with SBT 0.12.0 and later:
 
-    resolvers += {
-      val typesafeRepoUrl = new java.net.URL("http://repo.typesafe.com/typesafe/ivy-releases")
-      val pattern = Patterns(false, "[organisation]/[module]/[sbtversion]/[revision]/[type]s/[module](-[classifier])-[revision].[ext]")
-      Resolver.url("Typesafe Ivy Snapshot Repository", typesafeRepoUrl)(pattern)
-    }
-
-    libraryDependencies <<= (libraryDependencies, sbtVersion) { (deps, version) =>
-      deps :+ ("com.typesafe.startscript" %% "xsbt-start-script-plugin" % "0.2.0" extra("sbtversion" -> version))
-    }
-
-With SBT 0.11.x, you can use this simpler code:
-
-    resolvers += Classpaths.typesafeResolver
-
-    addSbtPlugin("com.typesafe.startscript" % "xsbt-start-script-plugin" % "0.5.2")
+    addSbtPlugin("com.typesafe.sbt" % "sbt-start-script % "0.X.Y")
 
 You can place that code in `~/.sbt/plugins/build.sbt` to install the
-plugin globally, or in YOURPROJECT/project/plugins/build.sbt to
+plugin globally, or in `YOURPROJECT/project/plugins.sbt` to
 install the plugin for your project.
 
 If you install the plugin globally, it will add a command
@@ -82,13 +68,34 @@ One way to get a `stage` task that does nothing is:
 
 which sets the `stage` key to `Unit`.
 
+## Migration from earlier versions of xsbt-start-script-plugin
+
+After 0.5.2, the plugin and its APIs were renamed to use
+consistent conventions (matching other plugins). The renamings
+were:
+
+ - the plugin itself is now `sbt-start-script` not
+   `xsbt-start-script-plugin`; update this in your `plugins.sbt`
+ - the Maven group and Java package are now `com.typesafe.sbt`
+   rather than `com.typesafe.startscript`; update this in your
+   `plugins.sbt` and in your build files
+ - the plugin object is now `SbtStartScript` rather than
+   `StartScriptPlugin`, update this in your build files
+ - if you used any keys directly, they are now inside a nested
+   object `StartScriptKeys` so for example rather than writing
+   `startScriptFile` you would write
+   `StartScriptKeys.startScriptFile` _or_ you need to `import
+   StartScriptKeys._`
+
 ## License
 
-xsbt-start-script-plugin is open source software licensed under the [Apache 2.0 License](http://www.apache.org/licenses/LICENSE-2.0.html).
+sbt-start-script is open source software licensed under the
+[Apache 2.0 License](http://www.apache.org/licenses/LICENSE-2.0.html).
 
 ## Contribution policy
 
-Contributions via GitHub pull requests are gladly accepted from their original author.
-Along with any pull requests, please state that the contribution is your original work
-and that you license the work to the xsbt-start-script-plugin project under the project's
-open source license.
+Contributions via GitHub pull requests are gladly accepted from
+their original author.  Before sending the pull request, please
+agree to the Contributor License Agreement at
+http://typesafe.com/contribute/cla (it takes 30 seconds; you use
+your GitHub account to sign the agreement).
