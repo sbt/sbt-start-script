@@ -1,6 +1,6 @@
-import com.typesafe.startscript.StartScriptPlugin
+import com.typesafe.sbt.SbtStartScript
 
-seq(StartScriptPlugin.startScriptForJarSettings: _*)
+seq(SbtStartScript.startScriptForJarSettings: _*)
 
 version := "0.1"
 

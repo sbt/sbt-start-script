@@ -1,4 +1,4 @@
-package com.typesafe.startscript
+package com.typesafe.sbt
 
 import _root_.sbt._
 
@@ -7,7 +7,7 @@ import Keys._
 import Defaults._
 import Scope.GlobalScope
 
-object StartScriptPlugin extends Plugin {
+object SbtStartScript extends Plugin {
     override lazy val settings = Seq(commands += addStartScriptTasksCommand)
 
     case class RelativeClasspathString(value: String)
@@ -19,22 +19,26 @@ object StartScriptPlugin extends Plugin {
 
     ///// Settings keys
 
-    val startScriptFile = SettingKey[File]("start-script-name")
-    val relativeDependencyClasspathString = TaskKey[RelativeClasspathString]("relative-dependency-classpath-string", "Dependency classpath as colon-separated string with each entry relative to the build root directory.")
-    val relativeFullClasspathString = TaskKey[RelativeClasspathString]("relative-full-classpath-string", "Full classpath as colon-separated string with each entry relative to the build root directory.")
-    val startScriptBaseDirectory = SettingKey[File]("start-script-base-directory", "All start scripts must be run from this directory.")
-    val startScriptForWar = TaskKey[File]("start-script-for-war", "Generate a shell script to launch the war file")
-    val startScriptForJar = TaskKey[File]("start-script-for-jar", "Generate a shell script to launch the jar file")
-    val startScriptForClasses = TaskKey[File]("start-script-for-classes", "Generate a shell script to launch from classes directory")
-    val startScriptNotDefined = TaskKey[File]("start-script-not-defined", "Generate a shell script that just complains that the project is not launchable")
-    val startScript = TaskKey[File]("start-script", "Generate a shell script that runs the application")
+    object StartScriptKeys {
+        val startScriptFile = SettingKey[File]("start-script-name")
+        val relativeDependencyClasspathString = TaskKey[RelativeClasspathString]("relative-dependency-classpath-string", "Dependency classpath as colon-separated string with each entry relative to the build root directory.")
+        val relativeFullClasspathString = TaskKey[RelativeClasspathString]("relative-full-classpath-string", "Full classpath as colon-separated string with each entry relative to the build root directory.")
+        val startScriptBaseDirectory = SettingKey[File]("start-script-base-directory", "All start scripts must be run from this directory.")
+        val startScriptForWar = TaskKey[File]("start-script-for-war", "Generate a shell script to launch the war file")
+        val startScriptForJar = TaskKey[File]("start-script-for-jar", "Generate a shell script to launch the jar file")
+        val startScriptForClasses = TaskKey[File]("start-script-for-classes", "Generate a shell script to launch from classes directory")
+        val startScriptNotDefined = TaskKey[File]("start-script-not-defined", "Generate a shell script that just complains that the project is not launchable")
+        val startScript = TaskKey[File]("start-script", "Generate a shell script that runs the application")
 
-    // jetty-related settings keys
-    val startScriptJettyVersion = SettingKey[String]("start-script-jetty-version", "Version of Jetty to use for running the .war")
-    val startScriptJettyChecksum = SettingKey[String]("start-script-jetty-checksum", "Expected SHA-1 of the Jetty distribution we intend to download")
-    val startScriptJettyURL = SettingKey[String]("start-script-jetty-url", "URL of the Jetty distribution to download (if set, then it overrides the start-script-jetty-version)")
-    val startScriptJettyContextPath = SettingKey[String]("start-script-jetty-context-path", "Context path for the war file when deployed to Jetty")
-    val startScriptJettyHome = TaskKey[File]("start-script-jetty-home", "Download Jetty distribution and return JETTY_HOME")
+        // jetty-related settings keys
+        val startScriptJettyVersion = SettingKey[String]("start-script-jetty-version", "Version of Jetty to use for running the .war")
+        val startScriptJettyChecksum = SettingKey[String]("start-script-jetty-checksum", "Expected SHA-1 of the Jetty distribution we intend to download")
+        val startScriptJettyURL = SettingKey[String]("start-script-jetty-url", "URL of the Jetty distribution to download (if set, then it overrides the start-script-jetty-version)")
+        val startScriptJettyContextPath = SettingKey[String]("start-script-jetty-context-path", "Context path for the war file when deployed to Jetty")
+        val startScriptJettyHome = TaskKey[File]("start-script-jetty-home", "Download Jetty distribution and return JETTY_HOME")
+    }
+
+    import StartScriptKeys._
 
     // this is in WebPlugin, but we don't want to rely on WebPlugin to build
     private val packageWar = TaskKey[File]("package-war")
