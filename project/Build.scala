@@ -35,7 +35,7 @@ object StartScriptBuild extends Build {
             // Versions and git tags should follow: http://semver.org/
             // except using -SNAPSHOT instead of without hyphen.
 
-            version := "0.5.3-SNAPSHOT",
+            version := "0.6.0-SNAPSHOT",
             libraryDependencies <++= sbtVersion {
 		(version) =>
 		    Seq("org.scala-sbt" % "io" % version % "provided",
@@ -50,5 +50,5 @@ object StartScriptBuild extends Build {
               Some(Resolver.url(name, url(repo))(Resolver.ivyStylePatterns))
             },
             publishMavenStyle := false,
-            credentials += Credentials(Path.userHome / ".ivy2" / ".typesafe-credentials"))
+            credentials += Credentials(Path.userHome / ".ivy2" / ".sbt-credentials"))
 }
