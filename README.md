@@ -23,7 +23,7 @@ dependencies within your build to work properly.
 
 To use the plugin with SBT 0.12.0 and later:
 
-    addSbtPlugin("com.typesafe.sbt" % "sbt-start-script % "0.6.0")
+    addSbtPlugin("com.typesafe.sbt" % "sbt-start-script" % "0.6.0")
 
 You can place that code in `~/.sbt/plugins/build.sbt` to install the
 plugin globally, or in `YOURPROJECT/project/plugins.sbt` to
@@ -42,13 +42,13 @@ build.
 
 Here's how you add the settings from the plugin in a `build.sbt`:
 
-    import com.typesafe.startscript.StartScriptPlugin
+    import com.typesafe.sbt.SbtStartScript
 
-    seq(StartScriptPlugin.startScriptForClassesSettings: _*)
+    seq(SbtStartScript.startScriptForClassesSettings: _*)
 
 In an SBT "full configuration" you would do something like:
 
-    settings = StartScriptPlugin.startScriptForClassesSettings
+    settings = SbtStartScript.startScriptForClassesSettings
 
 You have to choose which settings to add from these options:
 
@@ -64,7 +64,7 @@ If you have an aggregate project, you may want a `stage` task even
 though there's nothing to run, just so it will recurse into sub-projects.
 One way to get a `stage` task that does nothing is:
 
-    StartScriptPlugin.stage in Compile := Unit
+    SbtStartScript.stage in Compile := Unit
 
 which sets the `stage` key to `Unit`.
 
