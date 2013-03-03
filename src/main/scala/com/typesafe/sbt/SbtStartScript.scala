@@ -7,6 +7,9 @@ import Keys._
 import Defaults._
 import Scope.GlobalScope
 
+import java.util.regex.Pattern
+import java.io.File
+
 object SbtStartScript extends Plugin {
     override lazy val settings = Seq(commands += addStartScriptTasksCommand)
 
@@ -193,7 +196,7 @@ object SbtStartScript extends Plugin {
     // to basedir things that are already inside basedir. If basedir moves, we'd want
     // references to outside of it to be absolute, to keep working. We don't support
     // moving projects, just the entire build, which is generally a single git repo.
-    private def relativizeFile(baseDirectory: File, f: File) = {
+    private def relativizeFile(baseDirectory: File, f: File, prefix: String = ".") = {
         if (java.io.File.separatorChar != '/') {
             f
         } else {
@@ -203,7 +206,7 @@ object SbtStartScript extends Plugin {
                 val basePath = baseCanonical.getAbsolutePath()
                 val fPath = fCanonical.getAbsolutePath()
                 if (fPath.startsWith(basePath)) {
-                    new File("." + fPath.substring(basePath.length))
+                    new File(prefix + fPath.substring(basePath.length))
                 } else {
                     sys.error("Internal bug: %s contains %s but is not a prefix of it".format(basePath, fPath))
                 }
@@ -233,25 +236,25 @@ object SbtStartScript extends Plugin {
     }
 
     private def relativeClasspathStringTask(baseDirectory: File, cp: Classpath) = {
-        RelativeClasspathString(cp.files map { f => relativizeFile(baseDirectory, f) } mkString ("", java.io.File.pathSeparator, ""))
+        RelativeClasspathString(cp.files map { f => relativizeFile(baseDirectory, f, "$PROJECT_DIR") } mkString ("", java.io.File.pathSeparator, ""))
     }
 
-    // generate shell script that checks we're in the right directory
-    // by checking that the script itself exists.
-    private def scriptRootCheck(baseDirectory: File, scriptFile: File, otherFile: Option[File]): String = {
-        val relativeScript = relativizeFile(baseDirectory, scriptFile)
-        val template = """
-function die() {
-    echo "$*" 1>&2
-    exit 1
-}
-test -x '@RELATIVE_SCRIPT@' || die "'@RELATIVE_SCRIPT@' not found, this script must be run from the project base directory"
-"""
-        val part = renderTemplate(template, Map("RELATIVE_SCRIPT" -> relativeScript.toString))
-        otherFile.foldLeft(part)({ (firstPart, file) =>
-            firstPart + renderTemplate("""test -e '@OTHER_FILE@' || die "'@OTHER_FILE@' not found, this script must be run from the project base directory"""",
-                Map("OTHER_FILE" -> file.toString))
-        })
+    // Generate shell script that calculates path to project directory from its own path.
+    private def scriptRootDetect(baseDirectory: File, scriptFile: File, otherFile: Option[File]): String = {
+        val baseDir = baseDirectory.getCanonicalPath
+        val scriptDir = scriptFile.getParentFile.getCanonicalPath
+        val pathFromScriptDirToBaseDir = if (scriptDir startsWith (baseDir + File.separator)) {
+            val relativePath = scriptDir drop (baseDir.length + 1)
+            var parts = relativePath split Pattern.quote(File.separator)
+            Seq.fill(parts.length)("..").mkString(File.separator)
+        } else {
+            sys.error("Start script must be located inside project directory.")
+        }
+
+        renderTemplate(
+            """PROJECT_DIR=$(dirname $(readlink -f "${BASH_SOURCE[0]}"))/@PATH_TO_PROJECT@""",
+            Map(
+                "PATH_TO_PROJECT" -> pathFromScriptDirToBaseDir))
     }
 
     private def mainClassSetup(maybeMainClass: Option[String]): String = {
@@ -276,14 +279,14 @@ fi
 
     def startScriptForClassesTask(streams: TaskStreams, baseDirectory: File, scriptFile: File, cpString: RelativeClasspathString, maybeMainClass: Option[String]) = {
         val template = """#!/bin/bash
-@SCRIPT_ROOT_CHECK@
+@SCRIPT_ROOT_DETECT@
 
 @MAIN_CLASS_SETUP@
 
 exec java $JAVA_OPTS -cp "@CLASSPATH@" "$MAINCLASS" "$@"
 
 """
-        val script = renderTemplate(template, Map("SCRIPT_ROOT_CHECK" -> scriptRootCheck(baseDirectory, scriptFile, None),
+        val script = renderTemplate(template, Map("SCRIPT_ROOT_DETECT" -> scriptRootDetect(baseDirectory, scriptFile, None),
             "CLASSPATH" -> cpString.value,
             "MAIN_CLASS_SETUP" -> mainClassSetup(maybeMainClass)))
         writeScript(scriptFile, script)
@@ -299,7 +302,7 @@ exec java $JAVA_OPTS -cp "@CLASSPATH@" "$MAINCLASS" "$@"
     // not normally do that.
     def startScriptForJarTask(streams: TaskStreams, baseDirectory: File, scriptFile: File, jarFile: File, cpString: RelativeClasspathString, maybeMainClass: Option[String]) = {
         val template = """#!/bin/bash
-@SCRIPT_ROOT_CHECK@
+@SCRIPT_ROOT_DETECT@
 
 @MAIN_CLASS_SETUP@
 
@@ -309,7 +312,7 @@ exec java $JAVA_OPTS -cp "@CLASSPATH@" "$MAINCLASS" "$@"
 
         val relativeJarFile = relativizeFile(baseDirectory, jarFile)
 
-        val script = renderTemplate(template, Map("SCRIPT_ROOT_CHECK" -> scriptRootCheck(baseDirectory, scriptFile, Some(relativeJarFile)),
+        val script = renderTemplate(template, Map("SCRIPT_ROOT_DETECT" -> scriptRootDetect(baseDirectory, scriptFile, Some(relativeJarFile)),
             "CLASSPATH" -> cpString.value,
             "MAIN_CLASS_SETUP" -> mainClassSetup(maybeMainClass)))
         writeScript(scriptFile, script)
@@ -339,7 +342,7 @@ exec java $JAVA_OPTS -cp "@CLASSPATH@" "$MAINCLASS" "$@"
         IO.write(contextFile, contextFileContents)
 
         val template = """#!/bin/bash
-@SCRIPT_ROOT_CHECK@
+@SCRIPT_ROOT_DETECT@
 
 /bin/cp -f "@WARFILE@" "@JETTY_HOME@/webapps" || die "Failed to copy @WARFILE@ to @JETTY_HOME@/webapps"
 
@@ -353,7 +356,7 @@ exec java $JAVA_OPTS -Djetty.port="$PORT" -Djetty.home="@JETTY_HOME@" -jar "@JET
         val relativeWarFile = relativizeFile(baseDirectory, warFile)
 
         val script = renderTemplate(template,
-            Map("SCRIPT_ROOT_CHECK" -> scriptRootCheck(baseDirectory, scriptFile, Some(relativeWarFile)),
+            Map("SCRIPT_ROOT_DETECT" -> scriptRootDetect(baseDirectory, scriptFile, Some(relativeWarFile)),
                 "WARFILE" -> relativeWarFile.toString,
                 "JETTY_HOME" -> jettyHome.toString))
         writeScript(scriptFile, script)
