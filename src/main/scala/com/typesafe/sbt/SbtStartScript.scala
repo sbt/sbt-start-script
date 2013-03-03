@@ -239,7 +239,7 @@ object SbtStartScript extends Plugin {
         RelativeClasspathString(cp.files map { f => relativizeFile(baseDirectory, f, "$PROJECT_DIR") } mkString ("", java.io.File.pathSeparator, ""))
     }
 
-    // Generate shell script that calculates path to project directory from it's own path.
+    // Generate shell script that calculates path to project directory from its own path.
     private def scriptRootDetect(baseDirectory: File, scriptFile: File, otherFile: Option[File]): String = {
         val baseDir = baseDirectory.getCanonicalPath
         val scriptDir = scriptFile.getParentFile.getCanonicalPath
