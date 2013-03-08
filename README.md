@@ -23,7 +23,7 @@ dependencies within your build to work properly.
 
 To use the plugin with SBT 0.12.0 and later:
 
-    addSbtPlugin("com.typesafe.sbt" % "sbt-start-script" % "0.6.0")
+    addSbtPlugin("com.typesafe.sbt" % "sbt-start-script" % "0.7.0")
 
 You can place that code in `~/.sbt/plugins/build.sbt` to install the
 plugin globally, or in `YOURPROJECT/project/plugins.sbt` to
