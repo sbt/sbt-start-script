@@ -1,5 +1,3 @@
-addSbtPlugin("com.typesafe.sbt" % "sbt-start-script" % "0.5.3-SNAPSHOT")
+addSbtPlugin("com.typesafe.sbt" % "sbt-start-script" % "0.7.0-SNAPSHOT")
 
-libraryDependencies <+= (sbtVersion)(sbtVersion =>
-  "com.github.siasia" % "xsbt-web-plugin_2.9.2" % (sbtVersion + "-0.2.11.1")
-)
+addSbtPlugin("com.earldouglas" % "xsbt-web-plugin" % "0.2.12")
