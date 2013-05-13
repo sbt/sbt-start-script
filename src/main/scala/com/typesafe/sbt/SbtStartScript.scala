@@ -269,22 +269,23 @@ object SbtStartScript extends Plugin {
         maybeMainClass match {
             case Some(mainClass) =>
                 if (isWindows()) {
-                    "set MAINCLASS=" + mainClass + "\n"
+                    "set MAINCLASS=" + mainClass + "\r\n"
                 } else {
                     "MAINCLASS=" + mainClass + "\n"
                 }
             case None =>
+	    	val errMsg = """This "start" script requires a main class name as the first argument, because a mainClass was not specified in SBT and not autodetected by SBT (usually means you have zero, or more than one, main classes).  You could specify in your SBT build: mainClass in Compile := Some("Whatever")"""
                 if (isWindows()) {
-                    """set MAINCLASS="$1"
+                    """set MAINCLASS="%1"
 SHIFT
-if "%MAINCLASS%"=="" ( echo 'This "start" script requires a main class name as the first argument, because a mainClass was not specified in SBT and not autodetected by SBT (usually means you have zero, or more than one, main classes).  You could specify in your SBT build: mainClass in Compile := Some("Whatever")' EXIT 1)
+if "%MAINCLASS%"=="" ( echo '""" + errMsg + """' && EXIT 1)
 
 """
                 } else {
                     """MAINCLASS="$1"
 shift
 if test x"$MAINCLASS" = x; then
-    die 'This "start" script requires a main class name as the first argument, because a mainClass was not specified in SBT and not autodetected by SBT (usually means you have zero, or more than one, main classes).  You could specify in your SBT build: mainClass in Compile := Some("Whatever")'
+    die '""" + errMsg + """'
 fi
 
 """
@@ -303,7 +304,7 @@ fi
 
 @MAIN_CLASS_SETUP@
 
-java %JOPTS% -cp "@CLASSPATH@" "$MAINCLASS" "$@"
+java %JOPTS% -cp "@CLASSPATH@" "%MAINCLASS%" %*
 
 """
         val templateLinux = """#!/bin/bash
@@ -379,11 +380,14 @@ exec java $JAVA_OPTS -cp "@CLASSPATH@" "$MAINCLASS" "$@"
         IO.write(contextFile, contextFileContents)
 
         val templateWindows = """
+@echo off
 @SCRIPT_ROOT_DETECT@
 
-copy "@WARFILE@" "@JETTY_HOME@/webapps" || ( echo "Failed to copy @WARFILE@ to @JETTY_HOME@\webapps" && EXIT 1)
+copy "@WARFILE@" "@JETTY_HOME@\webapps" || (echo "Failed to copy @WARFILE@ to @JETTY_HOME@\webapps" && EXIT 1)
 
-java $JAVA_OPTS -Djetty.port="$PORT" -Djetty.home="@JETTY_HOME@" -jar "@JETTY_HOME@\start.jar" "$@"
+if "%PORT%"=="" (set PORT=8080)
+
+java %JAVA_OPTS% -Djetty.port="%PORT%" -Djetty.home="@JETTY_HOME@" -jar "@JETTY_HOME@\start.jar" %*
 
 """
         val templateLinux = """#!/bin/bash
@@ -415,12 +419,13 @@ exec java $JAVA_OPTS -Djetty.port="$PORT" -Djetty.home="@JETTY_HOME@" -jar "@JET
     // project that chains to child tasks, without having this dummy. For example "package"
     // works the same way, it even creates a bogus empty jar file in the root project!
     def startScriptNotDefinedTask(streams: TaskStreams, scriptFile: File) = {
+        val errMsg = "No meaningful way to start this project was defined in the SBT build"
         val msgWindows = """
-echo "No meaningful way to start this project was defined in the SBT build" 1>&2
+echo '""" + errMsg + """' 1>&2
 EXIT 1
 """
         val msgLinux = """#!/bin/bash
-echo "No meaningful way to start this project was defined in the SBT build" 1>&2
+echo '""" + errMsg + """' 1>&2
 exit 1
 """
         val msg: String = if (isWindows()) msgWindows else msgLinux
