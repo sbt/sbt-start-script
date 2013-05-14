@@ -1,5 +1,5 @@
 import com.typesafe.sbt.SbtStartScript
-import com.github.siasia.WebPlugin
+import com.earldouglas.xsbtwebplugin.WebPlugin
 
 seq(SbtStartScript.startScriptForWarSettings: _*)
 

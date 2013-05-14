@@ -46,11 +46,19 @@ object SbtStartScript extends Plugin {
     // this is in WebPlugin, but we don't want to rely on WebPlugin to build
     private val packageWar = TaskKey[File]("package-war")
 
+    // check for OS so a windows-compatible .bat script can be generated
+    def isWindows(): Boolean = {
+        val os = System.getProperty("os.name").toLowerCase();
+        return os.startsWith("windows")
+    }
+
+    val scriptname: String = if (isWindows()) "start.bat" else "start"
+
     // apps can manually add these settings (in the way you'd use WebPlugin.webSettings),
     // or you can install the plugin globally and use add-start-script-tasks to add
     // these settings to any project.
     val genericStartScriptSettings: Seq[Project.Setting[_]] = Seq(
-        startScriptFile <<= (target) { (target) => target / "start" },
+        startScriptFile <<= (target) { (target) => target / scriptname },
         // maybe not the right way to do this...
         startScriptBaseDirectory <<= (thisProjectRef) { (ref) => new File(ref.build) },
         startScriptNotDefined in Compile <<= (streams, startScriptFile in Compile) map startScriptNotDefinedTask,
@@ -251,24 +259,37 @@ object SbtStartScript extends Plugin {
             sys.error("Start script must be located inside project directory.")
         }
 
-        renderTemplate(
-            """PROJECT_DIR=$(dirname $(readlink -f "${BASH_SOURCE[0]}"))/@PATH_TO_PROJECT@""",
-            Map(
-                "PATH_TO_PROJECT" -> pathFromScriptDirToBaseDir))
+        val templateWindows = """set PROJECT_DIR=%~dp0\@PATH_TO_PROJECT@"""
+        val templateLinux = """PROJECT_DIR=$(dirname $(readlink -f "${BASH_SOURCE[0]}"))/@PATH_TO_PROJECT@"""
+        val template: String = if (isWindows()) templateWindows else templateLinux
+        renderTemplate(template, Map("PATH_TO_PROJECT" -> pathFromScriptDirToBaseDir))
     }
 
     private def mainClassSetup(maybeMainClass: Option[String]): String = {
         maybeMainClass match {
             case Some(mainClass) =>
-                "MAINCLASS=" + mainClass + "\n"
+                if (isWindows()) {
+                    "set MAINCLASS=" + mainClass + "\r\n"
+                } else {
+                    "MAINCLASS=" + mainClass + "\n"
+                }
             case None =>
-                """MAINCLASS="$1"
+	    	val errMsg = """This "start" script requires a main class name as the first argument, because a mainClass was not specified in SBT and not autodetected by SBT (usually means you have zero, or more than one, main classes).  You could specify in your SBT build: mainClass in Compile := Some("Whatever")"""
+                if (isWindows()) {
+                    """set MAINCLASS="%1"
+SHIFT
+if "%MAINCLASS%"=="" ( echo '""" + errMsg + """' && EXIT 1)
+
+"""
+                } else {
+                    """MAINCLASS="$1"
 shift
 if test x"$MAINCLASS" = x; then
-    die 'This "start" script requires a main class name as the first argument, because a mainClass was not specified in SBT and not autodetected by SBT (usually means you have zero, or more than one, main classes).  You could specify in your SBT build: mainClass in Compile := Some("Whatever")'
+    die '""" + errMsg + """'
 fi
 
 """
+                }
         }
     }
 
@@ -278,7 +299,15 @@ fi
     }
 
     def startScriptForClassesTask(streams: TaskStreams, baseDirectory: File, scriptFile: File, cpString: RelativeClasspathString, maybeMainClass: Option[String]) = {
-        val template = """#!/bin/bash
+        val templateWindows = """@echo off
+@SCRIPT_ROOT_DETECT@
+
+@MAIN_CLASS_SETUP@
+
+java %JOPTS% -cp "@CLASSPATH@" "%MAINCLASS%" %*
+
+"""
+        val templateLinux = """#!/bin/bash
 @SCRIPT_ROOT_DETECT@
 
 @MAIN_CLASS_SETUP@
@@ -286,6 +315,7 @@ fi
 exec java $JAVA_OPTS -cp "@CLASSPATH@" "$MAINCLASS" "$@"
 
 """
+        val template: String = if (isWindows()) templateWindows else templateLinux
         val script = renderTemplate(template, Map("SCRIPT_ROOT_DETECT" -> scriptRootDetect(baseDirectory, scriptFile, None),
             "CLASSPATH" -> cpString.value,
             "MAIN_CLASS_SETUP" -> mainClassSetup(maybeMainClass)))
@@ -301,7 +331,15 @@ exec java $JAVA_OPTS -cp "@CLASSPATH@" "$MAINCLASS" "$@"
     // the deps have to be bundled in the jar (classpath is ignored), and SBT does
     // not normally do that.
     def startScriptForJarTask(streams: TaskStreams, baseDirectory: File, scriptFile: File, jarFile: File, cpString: RelativeClasspathString, maybeMainClass: Option[String]) = {
-        val template = """#!/bin/bash
+        val templateWindows = """@echo off
+@SCRIPT_ROOT_DETECT@
+
+@MAIN_CLASS_SETUP@
+
+java %JOPTS% -cp "@CLASSPATH@" %MAINCLASS% %*
+
+"""
+        val templateLinux = """#!/bin/bash
 @SCRIPT_ROOT_DETECT@
 
 @MAIN_CLASS_SETUP@
@@ -309,7 +347,7 @@ exec java $JAVA_OPTS -cp "@CLASSPATH@" "$MAINCLASS" "$@"
 exec java $JAVA_OPTS -cp "@CLASSPATH@" "$MAINCLASS" "$@"
 
 """
-
+        val template: String = if (isWindows()) templateWindows else templateLinux
         val relativeJarFile = relativizeFile(baseDirectory, jarFile)
 
         val script = renderTemplate(template, Map("SCRIPT_ROOT_DETECT" -> scriptRootDetect(baseDirectory, scriptFile, Some(relativeJarFile)),
@@ -341,7 +379,18 @@ exec java $JAVA_OPTS -cp "@CLASSPATH@" "$MAINCLASS" "$@"
                 "CONTEXTPATH" -> jettyContextPath))
         IO.write(contextFile, contextFileContents)
 
-        val template = """#!/bin/bash
+        val templateWindows = """
+@echo off
+@SCRIPT_ROOT_DETECT@
+
+copy "@WARFILE@" "@JETTY_HOME@\webapps" || (echo "Failed to copy @WARFILE@ to @JETTY_HOME@\webapps" && EXIT 1)
+
+if "%PORT%"=="" (set PORT=8080)
+
+java %JAVA_OPTS% -Djetty.port="%PORT%" -Djetty.home="@JETTY_HOME@" -jar "@JETTY_HOME@\start.jar" %*
+
+"""
+        val templateLinux = """#!/bin/bash
 @SCRIPT_ROOT_DETECT@
 
 /bin/cp -f "@WARFILE@" "@JETTY_HOME@/webapps" || die "Failed to copy @WARFILE@ to @JETTY_HOME@/webapps"
@@ -353,6 +402,7 @@ fi
 exec java $JAVA_OPTS -Djetty.port="$PORT" -Djetty.home="@JETTY_HOME@" -jar "@JETTY_HOME@/start.jar" "$@"
 
 """
+        val template: String = if (isWindows()) templateWindows else templateLinux
         val relativeWarFile = relativizeFile(baseDirectory, warFile)
 
         val script = renderTemplate(template,
@@ -369,11 +419,17 @@ exec java $JAVA_OPTS -Djetty.port="$PORT" -Djetty.home="@JETTY_HOME@" -jar "@JET
     // project that chains to child tasks, without having this dummy. For example "package"
     // works the same way, it even creates a bogus empty jar file in the root project!
     def startScriptNotDefinedTask(streams: TaskStreams, scriptFile: File) = {
-        writeScript(scriptFile, """#!/bin/bash
-echo "No meaningful way to start this project was defined in the SBT build" 1>&2
+        val errMsg = "No meaningful way to start this project was defined in the SBT build"
+        val msgWindows = """
+echo '""" + errMsg + """' 1>&2
+EXIT 1
+"""
+        val msgLinux = """#!/bin/bash
+echo '""" + errMsg + """' 1>&2
 exit 1
-
-""")
+"""
+        val msg: String = if (isWindows()) msgWindows else msgLinux
+        writeScript(scriptFile, msg)
         streams.log.info("Wrote start script that always fails to " + scriptFile)
         scriptFile
     }
