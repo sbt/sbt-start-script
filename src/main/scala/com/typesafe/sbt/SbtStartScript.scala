@@ -274,7 +274,7 @@ object SbtStartScript extends Plugin {
                     "MAINCLASS=" + mainClass + "\n"
                 }
             case None =>
-	    	val errMsg = """This "start" script requires a main class name as the first argument, because a mainClass was not specified in SBT and not autodetected by SBT (usually means you have zero, or more than one, main classes).  You could specify in your SBT build: mainClass in Compile := Some("Whatever")"""
+                val errMsg = """This "start" script requires a main class name as the first argument, because a mainClass was not specified in SBT and not autodetected by SBT (usually means you have zero, or more than one, main classes).  You could specify in your SBT build: mainClass in Compile := Some("Whatever")"""
                 if (isWindows()) {
                     """set MAINCLASS="%1"
 SHIFT
