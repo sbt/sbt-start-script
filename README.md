@@ -68,6 +68,16 @@ One way to get a `stage` task that does nothing is:
 
 which sets the `stage` key to `Unit`.
 
+## Key names
+
+Note that all the keys (except `stage`) are in the
+`SbtStartScript.StartScriptKeys` object, so the scala version of
+the `start-script` key is
+`SbtStartScript.StartScriptKeys.startScript`. This is the standard
+convention for sbt plugins. Do an `import
+SbtStartScript.StartScriptKeys._` if you want all the keys
+unprefixed in your scope.
+
 ## Migration from earlier versions of xsbt-start-script-plugin
 
 After 0.5.2, the plugin and its APIs were renamed to use
@@ -86,6 +96,9 @@ were:
    `startScriptFile` you would write
    `StartScriptKeys.startScriptFile` _or_ you need to `import
    StartScriptKeys._`
+ - `StartScriptKeys.startScriptFile` did not match the string
+   name of that settings `start-script-name` so now you should
+   use `StartScriptKeys.startScriptName`
 
 ## License
 

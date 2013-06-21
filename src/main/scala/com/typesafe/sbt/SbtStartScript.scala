@@ -24,6 +24,9 @@ object SbtStartScript extends Plugin {
 
     object StartScriptKeys {
         val startScriptFile = SettingKey[File]("start-script-name")
+        // this is newly-added to make the val name consistent with the
+        // string name, and preferred over startScriptFile
+        val startScriptName = startScriptFile
         val relativeDependencyClasspathString = TaskKey[RelativeClasspathString]("relative-dependency-classpath-string", "Dependency classpath as colon-separated string with each entry relative to the build root directory.")
         val relativeFullClasspathString = TaskKey[RelativeClasspathString]("relative-full-classpath-string", "Full classpath as colon-separated string with each entry relative to the build root directory.")
         val startScriptBaseDirectory = SettingKey[File]("start-script-base-directory", "All start scripts must be run from this directory.")
