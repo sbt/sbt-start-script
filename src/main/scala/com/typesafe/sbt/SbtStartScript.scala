@@ -263,7 +263,7 @@ object SbtStartScript extends Plugin {
         }
 
         val templateWindows = """set PROJECT_DIR=%~dp0\@PATH_TO_PROJECT@"""
-        val templateLinux = """PROJECT_DIR=$(dirname $(readlink -f "${BASH_SOURCE[0]}"))/@PATH_TO_PROJECT@"""
+        val templateLinux = """PROJECT_DIR=$(cd "${BASH_SOURCE[0]%/*}" && pwd -P)/@PATH_TO_PROJECT@"""
         val template: String = if (isWindows()) templateWindows else templateLinux
         renderTemplate(template, Map("PATH_TO_PROJECT" -> pathFromScriptDirToBaseDir))
     }
