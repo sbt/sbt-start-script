@@ -76,7 +76,15 @@ the `start-script` key is
 `SbtStartScript.StartScriptKeys.startScript`. This is the standard
 convention for sbt plugins. Do an `import
 SbtStartScript.StartScriptKeys._` if you want all the keys
-unprefixed in your scope.
+unprefixed in your scope. Then, if you want to change a setting, you
+can simply reference the key directly in your `build.sbt'.
+
+For example, to change the filename of the generated script to 
+something other than `target/start` (which is controlled by the
+key `SbtStartScript.StartScriptKeys.startScriptName`), add the
+following to `build.sbt` after the above import statement:
+
+    startScriptName <<= target / "run"
 
 ## Migration from earlier versions of xsbt-start-script-plugin
 
