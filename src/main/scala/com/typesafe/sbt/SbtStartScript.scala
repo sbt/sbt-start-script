@@ -287,6 +287,10 @@ if "%MAINCLASS%"=="" ( echo '""" + errMsg + """' && EXIT 1)
                 } else {
                     """MAINCLASS="$1"
 shift
+function die() {
+   echo $* 1>&2
+   exit 1
+}
 if test x"$MAINCLASS" = x; then
     die '""" + errMsg + """'
 fi
