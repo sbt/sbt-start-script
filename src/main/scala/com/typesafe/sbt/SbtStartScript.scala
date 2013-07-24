@@ -35,6 +35,7 @@ object SbtStartScript extends Plugin {
         val startScriptForClasses = TaskKey[File]("start-script-for-classes", "Generate a shell script to launch from classes directory")
         val startScriptNotDefined = TaskKey[File]("start-script-not-defined", "Generate a shell script that just complains that the project is not launchable")
         val startScript = TaskKey[File]("start-script", "Generate a shell script that runs the application")
+        val startScriptJavaOpts = SettingKey[String]("start-script-java-opts", "Automatically apply these JVM options in the start script (augmenting those dynamically set in $JAVA_OPTS or %JOPTS); no effect for Jetty")
 
         // jetty-related settings keys
         val startScriptJettyVersion = SettingKey[String]("start-script-jetty-version", "Version of Jetty to use for running the .war")
@@ -67,6 +68,7 @@ object SbtStartScript extends Plugin {
         startScriptNotDefined in Compile <<= (streams, startScriptFile in Compile) map startScriptNotDefinedTask,
         relativeDependencyClasspathString in Compile <<= (startScriptBaseDirectory, dependencyClasspath in Runtime) map relativeClasspathStringTask,
         relativeFullClasspathString in Compile <<= (startScriptBaseDirectory, fullClasspath in Runtime) map relativeClasspathStringTask,
+        startScriptJavaOpts := "",
         stage in Compile <<= (startScript in Compile) map stageTask)
 
     // settings to be added to a web plugin project
@@ -82,12 +84,12 @@ object SbtStartScript extends Plugin {
 
     // settings to be added to a project with an exported jar
     val startScriptForJarSettings: Seq[Project.Setting[_]] = Seq(
-        startScriptForJar in Compile <<= (streams, startScriptBaseDirectory, startScriptFile in Compile, packageBin in Compile, relativeDependencyClasspathString in Compile, mainClass in Compile) map startScriptForJarTask,
+        startScriptForJar in Compile <<= (streams, startScriptBaseDirectory, startScriptFile in Compile, packageBin in Compile, relativeDependencyClasspathString in Compile, mainClass in Compile, startScriptJavaOpts) map startScriptForJarTask,
         startScript in Compile <<= startScriptForJar in Compile) ++ genericStartScriptSettings
 
     // settings to be added to a project that doesn't export a jar
     val startScriptForClassesSettings: Seq[Project.Setting[_]] = Seq(
-        startScriptForClasses in Compile <<= (streams, startScriptBaseDirectory, startScriptFile in Compile, relativeFullClasspathString in Compile, mainClass in Compile) map startScriptForClassesTask,
+        startScriptForClasses in Compile <<= (streams, startScriptBaseDirectory, startScriptFile in Compile, relativeFullClasspathString in Compile, mainClass in Compile, startScriptJavaOpts) map startScriptForClassesTask,
         startScript in Compile <<= startScriptForClasses in Compile) ++ genericStartScriptSettings
 
     // Extracted.getOpt is not in 10.1 and earlier
@@ -305,13 +307,13 @@ fi
         scriptFile.setExecutable(true)
     }
 
-    def startScriptForClassesTask(streams: TaskStreams, baseDirectory: File, scriptFile: File, cpString: RelativeClasspathString, maybeMainClass: Option[String]) = {
+    def startScriptForClassesTask(streams: TaskStreams, baseDirectory: File, scriptFile: File, cpString: RelativeClasspathString, maybeMainClass: Option[String], javaOpts: String) = {
         val templateWindows = """@echo off
 @SCRIPT_ROOT_DETECT@
 
 @MAIN_CLASS_SETUP@
 
-java %JOPTS% -cp "@CLASSPATH@" "%MAINCLASS%" %*
+java %JOPTS% @PERM_JAVA_OPTS@ -cp "@CLASSPATH@" "%MAINCLASS%" %*
 
 """
         val templateLinux = """#!/bin/bash
@@ -319,13 +321,14 @@ java %JOPTS% -cp "@CLASSPATH@" "%MAINCLASS%" %*
 
 @MAIN_CLASS_SETUP@
 
-exec java $JAVA_OPTS -cp "@CLASSPATH@" "$MAINCLASS" "$@"
+exec java $JAVA_OPTS @PERM_JAVA_OPTS@ -cp "@CLASSPATH@" "$MAINCLASS" "$@"
 
 """
         val template: String = if (isWindows()) templateWindows else templateLinux
         val script = renderTemplate(template, Map("SCRIPT_ROOT_DETECT" -> scriptRootDetect(baseDirectory, scriptFile, None),
             "CLASSPATH" -> cpString.value,
-            "MAIN_CLASS_SETUP" -> mainClassSetup(maybeMainClass)))
+            "MAIN_CLASS_SETUP" -> mainClassSetup(maybeMainClass),
+            "PERM_JAVA_OPTS" -> javaOpts))
         writeScript(scriptFile, script)
         streams.log.info("Wrote start script for mainClass := " + maybeMainClass + " to " + scriptFile)
         scriptFile
@@ -337,13 +340,13 @@ exec java $JAVA_OPTS -cp "@CLASSPATH@" "$MAINCLASS" "$@"
     // We put jar on the classpath and supply a mainClass because with "java -jar"
     // the deps have to be bundled in the jar (classpath is ignored), and SBT does
     // not normally do that.
-    def startScriptForJarTask(streams: TaskStreams, baseDirectory: File, scriptFile: File, jarFile: File, cpString: RelativeClasspathString, maybeMainClass: Option[String]) = {
+    def startScriptForJarTask(streams: TaskStreams, baseDirectory: File, scriptFile: File, jarFile: File, cpString: RelativeClasspathString, maybeMainClass: Option[String], javaOpts: String) = {
         val templateWindows = """@echo off
 @SCRIPT_ROOT_DETECT@
 
 @MAIN_CLASS_SETUP@
 
-java %JOPTS% -cp "@CLASSPATH@" %MAINCLASS% %*
+java %JOPTS% @PERM_JAVA_OPTS@ -cp "@CLASSPATH@" %MAINCLASS% %*
 
 """
         val templateLinux = """#!/bin/bash
@@ -351,7 +354,7 @@ java %JOPTS% -cp "@CLASSPATH@" %MAINCLASS% %*
 
 @MAIN_CLASS_SETUP@
 
-exec java $JAVA_OPTS -cp "@CLASSPATH@" "$MAINCLASS" "$@"
+exec java $JAVA_OPTS @PERM_JAVA_OPTS@ -cp "@CLASSPATH@" "$MAINCLASS" "$@"
 
 """
         val template: String = if (isWindows()) templateWindows else templateLinux
@@ -359,7 +362,8 @@ exec java $JAVA_OPTS -cp "@CLASSPATH@" "$MAINCLASS" "$@"
 
         val script = renderTemplate(template, Map("SCRIPT_ROOT_DETECT" -> scriptRootDetect(baseDirectory, scriptFile, Some(relativeJarFile)),
             "CLASSPATH" -> cpString.value,
-            "MAIN_CLASS_SETUP" -> mainClassSetup(maybeMainClass)))
+            "MAIN_CLASS_SETUP" -> mainClassSetup(maybeMainClass),
+            "PERM_JAVA_OPTS" -> javaOpts))
         writeScript(scriptFile, script)
         streams.log.info("Wrote start script for jar " + relativeJarFile + " to " + scriptFile + " with mainClass := " + maybeMainClass)
         scriptFile
