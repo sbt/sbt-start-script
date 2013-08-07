@@ -356,9 +356,10 @@ exec java $JAVA_OPTS -cp "@CLASSPATH@" "$MAINCLASS" "$@"
 """
         val template: String = if (isWindows()) templateWindows else templateLinux
         val relativeJarFile = relativizeFile(baseDirectory, jarFile)
+        val scriptRelativeJarFile = relativizeFile(baseDirectory, jarFile, "$PROJECT_DIR")
 
         val script = renderTemplate(template, Map("SCRIPT_ROOT_DETECT" -> scriptRootDetect(baseDirectory, scriptFile, Some(relativeJarFile)),
-            "CLASSPATH" -> cpString.value,
+            "CLASSPATH" -> (scriptRelativeJarFile + cpString.value.dropWhile(_ != ':')),
             "MAIN_CLASS_SETUP" -> mainClassSetup(maybeMainClass)))
         writeScript(scriptFile, script)
         streams.log.info("Wrote start script for jar " + relativeJarFile + " to " + scriptFile + " with mainClass := " + maybeMainClass)
