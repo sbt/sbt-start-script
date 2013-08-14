@@ -281,7 +281,7 @@ object SbtStartScript extends Plugin {
                 if (isWindows()) {
                     """set MAINCLASS="%1"
 SHIFT
-if "%MAINCLASS%"=="" ( echo '""" + errMsg + """' && EXIT 1)
+if "%MAINCLASS%"=="" ( echo """" + errMsg + """" && EXIT 1)
 
 """
                 } else {
@@ -428,7 +428,7 @@ exec java $JAVA_OPTS -Djetty.port="$PORT" -Djetty.home="@JETTY_HOME@" -jar "@JET
     def startScriptNotDefinedTask(streams: TaskStreams, scriptFile: File) = {
         val errMsg = "No meaningful way to start this project was defined in the SBT build"
         val msgWindows = """
-echo '""" + errMsg + """' 1>&2
+echo """" + errMsg + """" 1>&2
 EXIT 1
 """
         val msgLinux = """#!/bin/bash
