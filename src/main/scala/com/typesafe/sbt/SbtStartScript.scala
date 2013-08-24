@@ -24,6 +24,7 @@ object SbtStartScript extends Plugin {
 
     object StartScriptKeys {
         val startScriptFile = SettingKey[File]("start-script-name")
+        val startScriptArgs = SettingKey[Seq[String]]("start-script-args", "arguments to be prepended to the command line arguments to the main class")
         // this is newly-added to make the val name consistent with the
         // string name, and preferred over startScriptFile
         val startScriptName = startScriptFile
@@ -62,6 +63,7 @@ object SbtStartScript extends Plugin {
     // these settings to any project.
     val genericStartScriptSettings: Seq[Project.Setting[_]] = Seq(
         startScriptFile <<= (target) { (target) => target / scriptname },
+        startScriptArgs := Seq(),
         // maybe not the right way to do this...
         startScriptBaseDirectory <<= (thisProjectRef) { (ref) => new File(ref.build) },
         startScriptNotDefined in Compile <<= (streams, startScriptFile in Compile) map startScriptNotDefinedTask,
@@ -77,17 +79,17 @@ object SbtStartScript extends Plugin {
         startScriptJettyURL in Compile <<= (startScriptJettyVersion in Compile) { (version) => "http://archive.eclipse.org/jetty/" + version + "/dist/jetty-distribution-" + version + ".zip" },
         startScriptJettyContextPath in Compile := "/",
         startScriptJettyHome in Compile <<= (streams, target, startScriptJettyURL in Compile, startScriptJettyChecksum in Compile) map startScriptJettyHomeTask,
-        startScriptForWar in Compile <<= (streams, startScriptBaseDirectory, startScriptFile in Compile, packageWar in Compile, startScriptJettyHome in Compile, startScriptJettyContextPath in Compile) map startScriptForWarTask,
+        startScriptForWar in Compile <<= (streams, startScriptBaseDirectory, startScriptFile in Compile, packageWar in Compile, startScriptJettyHome in Compile, startScriptJettyContextPath in Compile, startScriptArgs in Compile) map startScriptForWarTask,
         startScript in Compile <<= startScriptForWar in Compile) ++ genericStartScriptSettings
 
     // settings to be added to a project with an exported jar
     val startScriptForJarSettings: Seq[Project.Setting[_]] = Seq(
-        startScriptForJar in Compile <<= (streams, startScriptBaseDirectory, startScriptFile in Compile, packageBin in Compile, relativeDependencyClasspathString in Compile, mainClass in Compile) map startScriptForJarTask,
+        startScriptForJar in Compile <<= (streams, startScriptBaseDirectory, startScriptFile in Compile, packageBin in Compile, relativeDependencyClasspathString in Compile, mainClass in Compile, startScriptArgs in Compile) map startScriptForJarTask,
         startScript in Compile <<= startScriptForJar in Compile) ++ genericStartScriptSettings
 
     // settings to be added to a project that doesn't export a jar
     val startScriptForClassesSettings: Seq[Project.Setting[_]] = Seq(
-        startScriptForClasses in Compile <<= (streams, startScriptBaseDirectory, startScriptFile in Compile, relativeFullClasspathString in Compile, mainClass in Compile) map startScriptForClassesTask,
+        startScriptForClasses in Compile <<= (streams, startScriptBaseDirectory, startScriptFile in Compile, relativeFullClasspathString in Compile, mainClass in Compile, startScriptArgs in Compile) map startScriptForClassesTask,
         startScript in Compile <<= startScriptForClasses in Compile) ++ genericStartScriptSettings
 
     // Extracted.getOpt is not in 10.1 and earlier
@@ -305,13 +307,13 @@ fi
         scriptFile.setExecutable(true)
     }
 
-    def startScriptForClassesTask(streams: TaskStreams, baseDirectory: File, scriptFile: File, cpString: RelativeClasspathString, maybeMainClass: Option[String]) = {
+    def startScriptForClassesTask(streams: TaskStreams, baseDirectory: File, scriptFile: File, cpString: RelativeClasspathString, maybeMainClass: Option[String], args: Seq[String]) = {
         val templateWindows = """@echo off
 @SCRIPT_ROOT_DETECT@
 
 @MAIN_CLASS_SETUP@
 
-java %JOPTS% -cp "@CLASSPATH@" "%MAINCLASS%" %*
+java %JOPTS% -cp "@CLASSPATH@" "%MAINCLASS%" @ARGS@ %*
 
 """
         val templateLinux = """#!/bin/bash
@@ -319,12 +321,13 @@ java %JOPTS% -cp "@CLASSPATH@" "%MAINCLASS%" %*
 
 @MAIN_CLASS_SETUP@
 
-exec java $JAVA_OPTS -cp "@CLASSPATH@" "$MAINCLASS" "$@"
+exec java $JAVA_OPTS -cp "@CLASSPATH@" "$MAINCLASS" @ARGS@ "$@"
 
 """
         val template: String = if (isWindows()) templateWindows else templateLinux
         val script = renderTemplate(template, Map("SCRIPT_ROOT_DETECT" -> scriptRootDetect(baseDirectory, scriptFile, None),
             "CLASSPATH" -> cpString.value,
+            "ARGS" -> args.map(x => "\"" + x + "\"").mkString,
             "MAIN_CLASS_SETUP" -> mainClassSetup(maybeMainClass)))
         writeScript(scriptFile, script)
         streams.log.info("Wrote start script for mainClass := " + maybeMainClass + " to " + scriptFile)
@@ -337,13 +340,13 @@ exec java $JAVA_OPTS -cp "@CLASSPATH@" "$MAINCLASS" "$@"
     // We put jar on the classpath and supply a mainClass because with "java -jar"
     // the deps have to be bundled in the jar (classpath is ignored), and SBT does
     // not normally do that.
-    def startScriptForJarTask(streams: TaskStreams, baseDirectory: File, scriptFile: File, jarFile: File, cpString: RelativeClasspathString, maybeMainClass: Option[String]) = {
+    def startScriptForJarTask(streams: TaskStreams, baseDirectory: File, scriptFile: File, jarFile: File, cpString: RelativeClasspathString, maybeMainClass: Option[String], args: Seq[String]) = {
         val templateWindows = """@echo off
 @SCRIPT_ROOT_DETECT@
 
 @MAIN_CLASS_SETUP@
 
-java %JOPTS% -cp "@CLASSPATH@" %MAINCLASS% %*
+java %JOPTS% -cp "@CLASSPATH@" %MAINCLASS% @ARGS@ %*
 
 """
         val templateLinux = """#!/bin/bash
@@ -351,7 +354,7 @@ java %JOPTS% -cp "@CLASSPATH@" %MAINCLASS% %*
 
 @MAIN_CLASS_SETUP@
 
-exec java $JAVA_OPTS -cp "@CLASSPATH@" "$MAINCLASS" "$@"
+exec java $JAVA_OPTS -cp "@CLASSPATH@" "$MAINCLASS" @ARGS@ "$@"
 
 """
         val template: String = if (isWindows()) templateWindows else templateLinux
@@ -359,6 +362,7 @@ exec java $JAVA_OPTS -cp "@CLASSPATH@" "$MAINCLASS" "$@"
 
         val script = renderTemplate(template, Map("SCRIPT_ROOT_DETECT" -> scriptRootDetect(baseDirectory, scriptFile, Some(relativeJarFile)),
             "CLASSPATH" -> cpString.value,
+            "ARGS" -> args.map(x => "\"" + x + "\"").mkString,
             "MAIN_CLASS_SETUP" -> mainClassSetup(maybeMainClass)))
         writeScript(scriptFile, script)
         streams.log.info("Wrote start script for jar " + relativeJarFile + " to " + scriptFile + " with mainClass := " + maybeMainClass)
@@ -369,7 +373,7 @@ exec java $JAVA_OPTS -cp "@CLASSPATH@" "$MAINCLASS" "$@"
     // we need to download and unpack the Jetty "distribution" which isn't
     // a normal jar dependency. Not sure if Ivy can do that, may have to just
     // have a configurable URL and checksum.
-    def startScriptForWarTask(streams: TaskStreams, baseDirectory: File, scriptFile: File, warFile: File, jettyHome: File, jettyContextPath: String) = {
+    def startScriptForWarTask(streams: TaskStreams, baseDirectory: File, scriptFile: File, warFile: File, jettyHome: File, jettyContextPath: String, args: Seq[String]) = {
 
         // First we need a Jetty config to move us to the right context path
         val contextFile = jettyHome / "contexts" / "start-script.xml"
@@ -394,7 +398,7 @@ copy "@WARFILE@" "@JETTY_HOME@\webapps" || (echo "Failed to copy @WARFILE@ to @J
 
 if "%PORT%"=="" (set PORT=8080)
 
-java %JAVA_OPTS% -Djetty.port="%PORT%" -Djetty.home="@JETTY_HOME@" -jar "@JETTY_HOME@\start.jar" %*
+java %JAVA_OPTS% -Djetty.port="%PORT%" -Djetty.home="@JETTY_HOME@" -jar "@JETTY_HOME@\start.jar" @ARGS@ %*
 
 """
         val templateLinux = """#!/bin/bash
@@ -406,7 +410,7 @@ if test x"$PORT" = x ; then
     PORT=8080
 fi
 
-exec java $JAVA_OPTS -Djetty.port="$PORT" -Djetty.home="@JETTY_HOME@" -jar "@JETTY_HOME@/start.jar" "$@"
+exec java $JAVA_OPTS -Djetty.port="$PORT" -Djetty.home="@JETTY_HOME@" -jar "@JETTY_HOME@/start.jar" @ARGS@ "$@"
 
 """
         val template: String = if (isWindows()) templateWindows else templateLinux
@@ -415,6 +419,7 @@ exec java $JAVA_OPTS -Djetty.port="$PORT" -Djetty.home="@JETTY_HOME@" -jar "@JET
         val script = renderTemplate(template,
             Map("SCRIPT_ROOT_DETECT" -> scriptRootDetect(baseDirectory, scriptFile, Some(relativeWarFile)),
                 "WARFILE" -> relativeWarFile.toString,
+                "ARGS" -> args.map(x => "\"" + x + "\"").mkString,
                 "JETTY_HOME" -> jettyHome.toString))
         writeScript(scriptFile, script)
 
