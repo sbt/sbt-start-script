@@ -248,6 +248,10 @@ object SbtStartScript extends Plugin {
         })
     }
 
+    private def argsToString(args: Seq[String]): String = if (isWindows()) argsToStringWindows(args) else argsToStringLinux(args)
+    private def argsToStringLinux(args: Seq[String]): String = args.map(x => "'" + x.replaceAllLiterally("'", """'\''""") + "'").mkString(" ")
+    private def argsToStringWindows(args: Seq[String]): String = args.map(x => "\"" + x + "\"").mkString(" ")
+
     private def relativeClasspathStringTask(baseDirectory: File, cp: Classpath) = {
         RelativeClasspathString(cp.files map { f => relativizeFile(baseDirectory, f, "$PROJECT_DIR") } mkString ("", java.io.File.pathSeparator, ""))
     }
@@ -327,7 +331,7 @@ exec java $JAVA_OPTS -cp "@CLASSPATH@" "$MAINCLASS" @ARGS@ "$@"
         val template: String = if (isWindows()) templateWindows else templateLinux
         val script = renderTemplate(template, Map("SCRIPT_ROOT_DETECT" -> scriptRootDetect(baseDirectory, scriptFile, None),
             "CLASSPATH" -> cpString.value,
-            "ARGS" -> args.map(x => "\"" + x + "\"").mkString,
+            "ARGS" -> argsToString(args),
             "MAIN_CLASS_SETUP" -> mainClassSetup(maybeMainClass)))
         writeScript(scriptFile, script)
         streams.log.info("Wrote start script for mainClass := " + maybeMainClass + " to " + scriptFile)
@@ -362,7 +366,7 @@ exec java $JAVA_OPTS -cp "@CLASSPATH@" "$MAINCLASS" @ARGS@ "$@"
 
         val script = renderTemplate(template, Map("SCRIPT_ROOT_DETECT" -> scriptRootDetect(baseDirectory, scriptFile, Some(relativeJarFile)),
             "CLASSPATH" -> cpString.value,
-            "ARGS" -> args.map(x => "\"" + x + "\"").mkString,
+            "ARGS" -> argsToString(args),
             "MAIN_CLASS_SETUP" -> mainClassSetup(maybeMainClass)))
         writeScript(scriptFile, script)
         streams.log.info("Wrote start script for jar " + relativeJarFile + " to " + scriptFile + " with mainClass := " + maybeMainClass)
@@ -419,7 +423,7 @@ exec java $JAVA_OPTS -Djetty.port="$PORT" -Djetty.home="@JETTY_HOME@" -jar "@JET
         val script = renderTemplate(template,
             Map("SCRIPT_ROOT_DETECT" -> scriptRootDetect(baseDirectory, scriptFile, Some(relativeWarFile)),
                 "WARFILE" -> relativeWarFile.toString,
-                "ARGS" -> args.map(x => "\"" + x + "\"").mkString,
+                "ARGS" -> argsToString(args),
                 "JETTY_HOME" -> jettyHome.toString))
         writeScript(scriptFile, script)
 
