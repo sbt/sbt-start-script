@@ -253,7 +253,7 @@ object SbtStartScript extends Plugin {
     // Generate shell script that calculates path to project directory from its own path.
     private def scriptRootDetect(baseDirectory: File, scriptFile: File, otherFile: Option[File]): String = {
         val baseDir = baseDirectory.getCanonicalPath
-        val scriptDir = scriptFile.getParentFile.getCanonicalPath
+        val scriptDir = scriptFile.getParentFile.getPath
         val pathFromScriptDirToBaseDir = if (scriptDir startsWith (baseDir + File.separator)) {
             val relativePath = scriptDir drop (baseDir.length + 1)
             var parts = relativePath split Pattern.quote(File.separator)
