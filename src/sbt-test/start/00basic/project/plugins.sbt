@@ -1,1 +1,1 @@
-addSbtPlugin("com.typesafe.sbt" % "sbt-start-script" % "0.8.0-SNAPSHOT")
+addSbtPlugin("com.typesafe.sbt" % "sbt-start-script" % "0.9.0-SNAPSHOT")
