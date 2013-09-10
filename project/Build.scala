@@ -2,8 +2,8 @@ import sbt._
 
 import Keys._
 import Project.Initialize
-import com.typesafe.sbtscalariform.ScalariformPlugin
-import com.typesafe.sbtscalariform.ScalariformPlugin.ScalariformKeys
+import com.typesafe.sbt.SbtScalariform
+import com.typesafe.sbt.SbtScalariform.ScalariformKeys
 
 object StartScriptBuild extends Build {
     def formatPrefs = {
@@ -18,7 +18,7 @@ object StartScriptBuild extends Build {
     lazy val rootSettings = Defaults.defaultSettings ++
         ScriptedPlugin.scriptedSettings ++
         // formatting
-        ScalariformPlugin.scalariformSettings ++ Seq(
+        SbtScalariform.scalariformSettings ++ Seq(
             ScalariformKeys.preferences in Compile := formatPrefs,
             ScalariformKeys.preferences in Test    := formatPrefs) ++
         Seq(sbtPlugin := true,
