@@ -45,6 +45,12 @@ You can place that code in `~/.sbt/plugins/build.sbt` to install the
 plugin globally, or in `YOURPROJECT/project/plugins.sbt` to
 install the plugin for your project.
 
+To use with SBT 0.13.x:
+
+    addSbtPlugin("com.typesafe.sbt" % "sbt-start-script" % "0.10.0")
+
+Note: the global directory for 0.13.x is `~/.sbt/0.13` instead of `~/.sbt`.
+
 If you install the plugin globally, it will add a command
 `add-start-script-tasks` to every project using SBT. You can run this
 command to add the tasks from the plugin, such as `start-script` (the
