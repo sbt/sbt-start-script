@@ -4,7 +4,8 @@ The more general native-packager plugin may replace this one in
 the future: https://github.com/sbt/sbt-native-packager
 
 Right now, there are some things this plugin does that
-native-packager doesn't do, but maybe they aren't important.
+native-packager doesn't do, but maybe they aren't important to you,
+or you could easily add them to native-packager.
 
 For example, native-packager always copies dependent jars over
 into a staging area instead of using them from the ivy cache - in
