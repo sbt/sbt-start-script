@@ -1,3 +1,19 @@
+## Consider sbt-native-packager instead
+
+The more general native-packager plugin may replace this one in
+the future: https://github.com/sbt/sbt-native-packager
+
+Right now, there are some things this plugin does that
+native-packager doesn't do, but maybe they aren't important.
+
+For example, native-packager always copies dependent jars over
+into a staging area instead of using them from the ivy cache - in
+some cases this may be what you want. On Heroku, it may increase
+your slug size unless you adapt the default buildpack to blow away
+the ivy cache.
+
+## About this plugin (sbt-start-script)
+
 This plugin allows you to generate a script `target/start` for a
 project.  The script will run the project "in-place" (without having
 to build a package first).
@@ -21,7 +37,7 @@ dependencies within your build to work properly.
 
 ## Details
 
-To use the plugin with SBT 0.12.0 and later:
+To use the plugin with SBT 0.12.x:
 
     addSbtPlugin("com.typesafe.sbt" % "sbt-start-script" % "0.9.0")
 
