@@ -3,15 +3,22 @@
 The more general native-packager plugin may replace this one in
 the future: https://github.com/sbt/sbt-native-packager
 
-Right now, there are some things this plugin does that
-native-packager doesn't do, but maybe they aren't important to you,
-or you could easily add them to native-packager.
+The rough way to get a start script with sbt-native-packager,
+modulo any details of your app, is:
 
-For example, native-packager always copies dependent jars over
-into a staging area instead of using them from the ivy cache - in
-some cases this may be what you want. On Heroku, it may increase
-your slug size unless you adapt the default buildpack to blow away
-the ivy cache.
+ 1. add sbt-native-packager plugin to your project
+ 2. remove start-script-plugin
+ 3. add `settings(com.typesafe.sbt.SbtNativePackager.packageArchetype.java_application: _*)`
+ 4. `stage` task will now generate a script `target/universal/stage/bin/project-name` instead of `target/start`
+ 5. the sbt-native-packager-generated script looks at a `java_opts` env var but you cannot pass Java opts as parameters to the script as you could with `target/start`
+ 6. the sbt-native-packager-generated script copies dependency jars into `target/`, so you don't need the Ivy cache
+
+Many were using sbt-start-script with Heroku, sbt-native-packager has two tricky things on Heroku right now:
+
+ 1. Heroku sets `JAVA_OPTS` and not `java_opts`. See https://github.com/sbt/sbt-native-packager/issues/47 and https://github.com/sbt/sbt-native-packager/issues/48 ... for now you have to manually configure `java_opts` and not specify memory options, or hack sbt-native-packager.
+ 2. You need to hack the build pack to drop the Ivy cache, or your slug will be bloated or even exceed the max size.
+
+Also of course you have to change your `Procfile` for the new name of the script.
 
 ## About this plugin (sbt-start-script)
 
