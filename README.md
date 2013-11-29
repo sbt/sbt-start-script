@@ -116,6 +116,12 @@ following to `build.sbt` after the above import statement:
 
     startScriptName <<= target / "run"
 
+There is also the possibility to define a list of arguments which is always
+passed to the main class, prepended to the arguments specified when running the
+start script:
+
+    startScriptArgs := Seq("one arg", "another")
+
 ## Migration from earlier versions of xsbt-start-script-plugin
 
 After 0.5.2, the plugin and its APIs were renamed to use
