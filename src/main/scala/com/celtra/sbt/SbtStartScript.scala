@@ -1,12 +1,11 @@
-package com.typesafe.sbt
+package com.celtra.sbt
+
+import java.io.File
+import java.util.regex.Pattern
 
 import _root_.sbt._
-
-import Keys._
-import Defaults._
-
-import java.util.regex.Pattern
-import java.io.File
+import sbt.Defaults._
+import sbt.Keys._
 
 object SbtStartScript extends Plugin {
     override lazy val settings = Seq(commands += addStartScriptTasksCommand)
@@ -33,7 +32,7 @@ object SbtStartScript extends Plugin {
         val startScript = TaskKey[File]("start-script", "Generate a shell script that runs the application")
     }
 
-    import StartScriptKeys._
+    import com.celtra.sbt.SbtStartScript.StartScriptKeys._
 
     val scriptName: String = "start"
 

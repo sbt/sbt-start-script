@@ -22,7 +22,7 @@ object StartScriptBuild extends Build {
             ScalariformKeys.preferences in Compile := formatPrefs,
             ScalariformKeys.preferences in Test    := formatPrefs) ++
         Seq(sbtPlugin := true,
-            organization := "com.typesafe.sbt",
+            organization := "com.celtra.sbt",
             name := "sbt-start-script",
             scalacOptions := Seq("-unchecked", "-deprecation"),
 
