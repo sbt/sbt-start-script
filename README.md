@@ -1,25 +1,3 @@
-## Consider sbt-native-packager instead
-
-The more general native-packager plugin may replace this one in
-the future: https://github.com/sbt/sbt-native-packager
-
-The rough way to get a start script with sbt-native-packager,
-modulo any details of your app, is:
-
- 1. add sbt-native-packager plugin to your project
- 2. remove start-script-plugin
- 3. add `settings(com.typesafe.sbt.SbtNativePackager.packageArchetype.java_application: _*)`
- 4. `stage` task will now generate a script `target/universal/stage/bin/project-name` instead of `target/start`
- 5. the sbt-native-packager-generated script looks at a `java_opts` env var but you cannot pass Java opts as parameters to the script as you could with `target/start`
- 6. the sbt-native-packager-generated script copies dependency jars into `target/`, so you don't need the Ivy cache
-
-Many were using sbt-start-script with Heroku, sbt-native-packager has two tricky things on Heroku right now:
-
- 1. Heroku sets `JAVA_OPTS` and not `java_opts`. See https://github.com/sbt/sbt-native-packager/issues/47 and https://github.com/sbt/sbt-native-packager/issues/48 ... for now you have to manually configure `java_opts` and not specify memory options, or hack sbt-native-packager.
- 2. You need to hack the build pack to drop the Ivy cache, or your slug will be bloated or even exceed the max size.
-
-Also of course you have to change your `Procfile` for the new name of the script.
-
 ## About this plugin (sbt-start-script)
 
 This plugin allows you to generate a script `target/start` for a
@@ -43,21 +21,28 @@ The `target/start` script must be run from the root build directory
 (note: NOT the root _project_ directory). This allows inter-project
 dependencies within your build to work properly.
 
+This is a fork of the original https://github.com/sbt/sbt-start-script/
+
+ - JAR and WAR support has been removed (we believe this to be out of scope)
+ - generated scripts are executable by other users
+ - Staging for tests has been added - useful for read-only filesystems
+
+## Staging tests
+
+This plugin creates a script to run tests, similar to above described
+start script. To stage tests run `test:stage`.
+
 ## Details
 
-To use the plugin with SBT 0.12.x:
+To use the plugin with SBT 0.13.x:
 
-    addSbtPlugin("com.typesafe.sbt" % "sbt-start-script" % "0.9.0")
+    resolvers += Resolver.url("celtra-sbt", url("https://s3.amazonaws.com/files.celtra-test.com/maven"))(Resolver.ivyStylePatterns)
+
+    addSbtPlugin("com.celtra.sbt" % "sbt-start-script" % "0.10.1")
 
 You can place that code in `~/.sbt/plugins/build.sbt` to install the
 plugin globally, or in `YOURPROJECT/project/plugins.sbt` to
 install the plugin for your project.
-
-To use with SBT 0.13.x:
-
-    addSbtPlugin("com.typesafe.sbt" % "sbt-start-script" % "0.10.0")
-
-Note: the global directory for 0.13.x is `~/.sbt/0.13` instead of `~/.sbt`.
 
 If you install the plugin globally, it will add a command
 `add-start-script-tasks` to every project using SBT. You can run this
@@ -83,12 +68,6 @@ In an SBT "full configuration" you would do something like:
 You have to choose which settings to add from these options:
 
  - `startScriptForClassesSettings`  (the script will run from .class files)
- - `startScriptForJarSettings`      (the script will run from .jar file from 'package')
- - `startScriptForWarSettings`      (the script will run a .war with Jetty)
-
-`startScriptForWarSettings` requires
-https://github.com/siasia/xsbt-web-plugin/ to provide the
-`package-war` task.
 
 If you have an aggregate project, you may want a `stage` task even
 though there's nothing to run, just so it will recurse into sub-projects.
@@ -146,7 +125,4 @@ sbt-start-script is open source software licensed under the
 ## Contribution policy
 
 Contributions via GitHub pull requests are gladly accepted from
-their original author.  Before sending the pull request, please
-agree to the Contributor License Agreement at
-http://typesafe.com/contribute/cla (it takes 30 seconds; you use
-your GitHub account to sign the agreement).
+their original author.
