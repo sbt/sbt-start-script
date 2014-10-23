@@ -34,7 +34,6 @@ object SbtStartScript extends Plugin {
         val startScriptNotDefined = TaskKey[File]("start-script-not-defined", "Generate a shell script that just complains that the project is not launchable")
         val startScript = TaskKey[File]("start-script", "Generate a shell script that runs the application")
         val testPackage = TaskKey[String]("test-package", "Base package in which test suites will be looked for")
-        val testExtraSetup = TaskKey[String]("test-extra-setup", "Any extra setup added to the test script before launching the tests")
     }
 
     import com.celtra.sbt.SbtStartScript.StartScriptKeys._
@@ -61,8 +60,7 @@ object SbtStartScript extends Plugin {
     val startScriptForClassesSettings: Seq[Def.Setting[_]] = Seq(
         startScriptForClasses in Compile <<= (streams, startScriptBaseDirectory, startScriptFile in Compile, relativeFullClasspathString in Compile, mainClass in Compile) map startScriptForClassesTask,
         startScript in Compile <<= startScriptForClasses in Compile,
-        testExtraSetup := "",
-        startScriptForClasses in Test <<= (streams, startScriptBaseDirectory, testScriptFile in Test, relativeTestClasspathString in Test, testPackage, classDirectory in Test, testExtraSetup) map startScriptForScalaTestTask,
+        startScriptForClasses in Test <<= (streams, startScriptBaseDirectory, testScriptFile in Test, relativeTestClasspathString in Test, testPackage, classDirectory in Test, envVars in Test) map startScriptForScalaTestTask,
         startScript in Test <<= startScriptForClasses in Test) ++ genericStartScriptSettings
 
     // Extracted.getOpt is not in 10.1 and earlier
@@ -275,17 +273,17 @@ exec java $JAVA_OPTS -cp "@CLASSPATH@" "$MAINCLASS" "$@"
         scriptFile
     }
 
-    def startScriptForScalaTestTask(streams: TaskStreams, baseDirectory: File, scriptFile: File, cpString: RelativeClasspathString, testPackage: String, target: File, extraSetup: String) = {
+    def startScriptForScalaTestTask(streams: TaskStreams, baseDirectory: File, scriptFile: File, cpString: RelativeClasspathString, testPackage: String, target: File, envVars: Map[String, String]) = {
         val template: String = """#!/bin/bash
 @SCRIPT_ROOT_DETECT@
 
-@EXTRA_SETUP@
+@ENV_VARS@
 
 exec java $JAVA_OPTS -cp "@CLASSPATH@" org.scalatest.tools.Runner -oF -w @TEST_PACKAGE@ -R @TARGET@
 
 """
         val script = renderTemplate(template, Map("SCRIPT_ROOT_DETECT" -> scriptRootDetect(baseDirectory, scriptFile, None),
-            "EXTRA_SETUP" -> extraSetup,
+            "ENV_VARS" -> envVars.foldLeft("")( (acc, kv) => acc + s"export ${kv._1}=${kv._2}\n"),
             "CLASSPATH" -> cpString.value,
             "TEST_PACKAGE" -> testPackage,
             "TARGET" -> relativizeFile(baseDirectory, target, "$PROJECT_DIR").toString))
