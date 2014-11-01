@@ -36,9 +36,9 @@ start script. To stage tests run `test:stage`.
 
 To use the plugin with SBT 0.13.x:
 
-    resolvers += Resolver.url("celtra-sbt", url("https://s3.amazonaws.com/files.celtra-test.com/maven"))(Resolver.ivyStylePatterns)
+    resolvers += Resolver.url("celtra-sbt", url("http://files.celtra.com/maven"))(Resolver.ivyStylePatterns)
 
-    addSbtPlugin("com.celtra.sbt" % "sbt-start-script" % "0.10.1")
+    addSbtPlugin("com.celtra.sbt" % "sbt-start-script" % "0.10.3")
 
 You can place that code in `~/.sbt/plugins/build.sbt` to install the
 plugin globally, or in `YOURPROJECT/project/plugins.sbt` to
