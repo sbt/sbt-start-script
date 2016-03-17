@@ -279,11 +279,11 @@ exec java $JAVA_OPTS -cp "@CLASSPATH@" "$MAINCLASS" "$@"
 
 @ENV_VARS@
 
-exec java $JAVA_OPTS -cp "@CLASSPATH@" org.scalatest.tools.Runner -oF -w @TEST_PACKAGE@ -R @TARGET@
+exec java $JAVA_OPTS -cp "@CLASSPATH@" org.scalatest.tools.Runner -oDF -u $(dirname $(readlink -e $0))/test-reports/ -w @TEST_PACKAGE@ -R @TARGET@
 
 """
         val script = renderTemplate(template, Map("SCRIPT_ROOT_DETECT" -> scriptRootDetect(baseDirectory, scriptFile, None),
-            "ENV_VARS" -> envVars.foldLeft("")( (acc, kv) => acc + s"export ${kv._1}=${kv._2}\n"),
+            "ENV_VARS" -> envVars.foldLeft("")((acc, kv) => acc + s"export ${kv._1}=${kv._2}\n"),
             "CLASSPATH" -> cpString.value,
             "TEST_PACKAGE" -> testPackage,
             "TARGET" -> relativizeFile(baseDirectory, target, "$PROJECT_DIR").toString))
